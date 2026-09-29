@@ -9,6 +9,7 @@ import (
 	"money-tracker-ai/repositories"
 	"os"
 	"strings"
+	"time"
 
 	"google.golang.org/genai"
 )
@@ -34,6 +35,7 @@ PENTING: Jangan tambahkan teks apapun selain JSON. Tidak ada penjelasan, tidak a
 
 type AIService interface {
 	ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error)
+	Close()
 }
 
 type aiService struct {
@@ -62,7 +64,8 @@ func NewAIService(logRepo repositories.AILogRepository) AIService {
 // ParseTransactionPrompt mengirim pesan user ke Gemini AI dan meng-parse
 // respons JSON-nya menjadi struct ParsedTransaction.
 func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Setup model config dengan system instruction
 	config := &genai.GenerateContentConfig{
@@ -111,4 +114,9 @@ func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTr
 	}
 
 	return &parsed, nil
+}
+
+// Close membersihkan resource client
+func (s *aiService) Close() {
+	// genai.Client from google.golang.org/genai doesn't require Close()
 }
