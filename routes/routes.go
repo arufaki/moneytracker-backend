@@ -9,6 +9,7 @@ import (
 type RouterConfig struct {
 	WalletController   *controllers.WalletController
 	CategoryController *controllers.CategoryController
+	ChatController     *controllers.ChatController
 }
 
 func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
@@ -29,5 +30,8 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 			categories.GET("/:id", cfg.CategoryController.GetCategoryByID)
 			categories.POST("", cfg.CategoryController.CreateCategory)
 		}
+
+		// Chat route (AI-powered transaction)
+		api.POST("/chat", cfg.ChatController.Chat)
 	}
 }

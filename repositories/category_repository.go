@@ -10,6 +10,7 @@ type CategoryRepository interface {
 	FindAll() ([]models.Category, error)
 	FindByID(id uint) (*models.Category, error)
 	Create(category *models.Category) error
+	FindByName(name string) (*models.Category, error)
 }
 
 type categoryRepository struct {
@@ -37,4 +38,13 @@ func (r *categoryRepository) FindByID(id uint) (*models.Category, error) {
 
 func (r *categoryRepository) Create(category *models.Category) error {
 	return r.db.Create(category).Error
+}
+
+func (r *categoryRepository) FindByName(name string) (*models.Category, error) {
+	var category models.Category
+	err := r.db.Where("name = ?", name).First(&category).Error
+	if err != nil {
+		return nil, err
+	}
+	return &category, nil
 }
