@@ -18,7 +18,6 @@ type transactionService struct {
 	aiSvc        AIService
 	walletRepo   repositories.WalletRepository
 	categoryRepo repositories.CategoryRepository
-	txRepo       repositories.TransactionRepository
 	db           *gorm.DB
 	mu           sync.Mutex
 }
@@ -27,14 +26,12 @@ func NewTransactionService(
 	aiSvc AIService,
 	walletRepo repositories.WalletRepository,
 	categoryRepo repositories.CategoryRepository,
-	txRepo repositories.TransactionRepository,
 	db *gorm.DB,
 ) TransactionService {
 	return &transactionService{
 		aiSvc:        aiSvc,
 		walletRepo:   walletRepo,
 		categoryRepo: categoryRepo,
-		txRepo:       txRepo,
 		db:           db,
 	}
 }
@@ -47,6 +44,10 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 	}
 
 	// --- Step 2: Cari atau buat Wallet berdasarkan nama dari AI ---
+	// Lock SEBELUM FindByName agar tidak ada race condition
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	wallet, err := s.walletRepo.FindByName(parsed.Wallet)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -77,10 +78,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 		}
 	}
 
-	// --- Step 4: Jalankan transaksi DB (atomic, pakai Mutex agar thread-safe) ---
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	// --- Step 4: Jalankan transaksi DB (atomic) ---
 	var savedTransaction *models.Transaction
 
 	dbErr := s.db.Transaction(func(tx *gorm.DB) error {

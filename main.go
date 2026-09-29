@@ -32,7 +32,6 @@ func main() {
 	// Repositories
 	walletRepo := repositories.NewWalletRepository(config.DB)
 	categoryRepo := repositories.NewCategoryRepository(config.DB)
-	txRepo := repositories.NewTransactionRepository(config.DB)
 
 	// Services
 	walletSvc := services.NewWalletService(walletRepo)
@@ -44,7 +43,7 @@ func main() {
 	defer aiSvc.Close()
 	log.Println("AI Service initialized")
 
-	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, txRepo, config.DB)
+	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, config.DB)
 
 	// Controllers
 	walletCtrl := controllers.NewWalletController(walletSvc)

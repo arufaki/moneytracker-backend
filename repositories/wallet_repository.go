@@ -54,7 +54,7 @@ func (r *walletRepository) UpdateBalance(id uint, newBalance float64) error {
 
 func (r *walletRepository) FindByName(name string) (*models.Wallet, error) {
 	var wallet models.Wallet
-	err := r.db.Where("name = ?", name).First(&wallet).Error
+	err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&wallet).Error
 	if err != nil {
 		return nil, err
 	}

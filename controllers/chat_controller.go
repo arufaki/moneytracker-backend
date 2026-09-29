@@ -33,6 +33,13 @@ func (ctrl *ChatController) Chat(c *gin.Context) {
 	// Proses pesan via TransactionService
 	resp, err := ctrl.service.ProcessChatMessage(req.Message)
 	if err != nil {
+		if err.Error() == "insufficient balance" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),

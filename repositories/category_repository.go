@@ -42,7 +42,7 @@ func (r *categoryRepository) Create(category *models.Category) error {
 
 func (r *categoryRepository) FindByName(name string) (*models.Category, error) {
 	var category models.Category
-	err := r.db.Where("name = ?", name).First(&category).Error
+	err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&category).Error
 	if err != nil {
 		return nil, err
 	}
