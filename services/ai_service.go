@@ -75,7 +75,7 @@ func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTr
 	}
 
 	// Kirim pesan ke AI
-	resp, err := s.client.Models.GenerateContent(ctx, "gemini-1.5-flash", genai.Text(userMessage), config)
+	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.5-flash-lite", genai.Text(userMessage), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content from Gemini: %w", err)
 	}
