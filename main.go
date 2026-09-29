@@ -37,6 +37,16 @@ func main() {
 	walletSvc := services.NewWalletService(walletRepo)
 	categorySvc := services.NewCategoryService(categoryRepo)
 
+	// AI Setup
+	if os.Getenv("GEMINI_API_KEY") != "" {
+		aiLogRepo := repositories.NewAILogRepository(config.DB)
+		aiSvc := services.NewAIService(aiLogRepo) // akan dipakai di Issue #5
+		defer aiSvc.Close()
+		log.Println("AI Service initialized")
+	} else {
+		log.Println("GEMINI_API_KEY not set, AI Service skipped")
+	}
+
 	// Controllers
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
