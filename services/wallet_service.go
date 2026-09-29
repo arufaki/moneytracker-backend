@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"money-tracker-ai/models"
 	"money-tracker-ai/repositories"
 	"sync"
@@ -16,11 +17,11 @@ type WalletService interface {
 
 type walletService struct {
 	repo repositories.WalletRepository
-	mu   sync.Mutex
+	mu   *sync.Mutex
 }
 
 func NewWalletService(repo repositories.WalletRepository) WalletService {
-	return &walletService{repo: repo}
+	return &walletService{repo: repo, mu: &sync.Mutex{}}
 }
 
 func (s *walletService) GetAllWallets() ([]models.Wallet, error) {
@@ -34,6 +35,9 @@ func (s *walletService) GetWalletByID(id uint) (*models.Wallet, error) {
 func (s *walletService) CreateWallet(name string, initialBalance float64) (*models.Wallet, error) {
 	if name == "" {
 		return nil, errors.New("wallet name cannot be empty")
+	}
+	if initialBalance < 0 {
+		return nil, errors.New("initial balance cannot be negative")
 	}
 	wallet := &models.Wallet{
 		Name:    name,
@@ -69,5 +73,9 @@ func (s *walletService) UpdateWalletBalance(id uint, amount float64, transaction
 		return errors.New("invalid transaction type, must be 'income' or 'expense'")
 	}
 
-	return s.repo.UpdateBalance(id, wallet.Balance)
+	err = s.repo.UpdateBalance(id, wallet.Balance)
+	if err != nil {
+		return fmt.Errorf("failed to update wallet balance for id %d: %w", id, err)
+	}
+	return nil
 }

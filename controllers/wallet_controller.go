@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"money-tracker-ai/services"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type WalletController struct {
@@ -39,7 +41,11 @@ func (ctrl *WalletController) GetWalletByID(c *gin.Context) {
 
 	wallet, err := ctrl.service.GetWalletByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": wallet})

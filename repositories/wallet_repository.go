@@ -41,5 +41,12 @@ func (r *walletRepository) Create(wallet *models.Wallet) error {
 }
 
 func (r *walletRepository) UpdateBalance(id uint, newBalance float64) error {
-	return r.db.Model(&models.Wallet{}).Where("id = ?", id).Update("balance", newBalance).Error
+	result := r.db.Model(&models.Wallet{}).Where("id = ?", id).Update("balance", newBalance)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
