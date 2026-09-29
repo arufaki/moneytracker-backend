@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,12 +29,11 @@ func (c *AnalyticsController) GetSummary(ctx *gin.Context) {
 
 	if monthStr != "" {
 		m, err := strconv.Atoi(monthStr)
-		if err == nil && m >= 1 && m <= 12 {
-			month = m
-		} else if err != nil || m < 1 || m > 12 {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid month"})
+		if err != nil || m < 1 || m > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "month must be between 1 and 12"})
 			return
 		}
+		month = m
 	}
 
 	if yearStr != "" {
@@ -48,7 +48,8 @@ func (c *AnalyticsController) GetSummary(ctx *gin.Context) {
 
 	summary, err := c.analyticsService.GetMonthlySummary(month, year)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] GetSummary: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 
 	"money-tracker-ai/models"
@@ -22,23 +23,30 @@ func NewAnalyticsService(db *gorm.DB) AnalyticsService {
 
 func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.MonthlySummary, error) {
 	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
-	endDate := startDate.AddDate(0, 1, 0).Add(-time.Second)
+	nextMonthStart := startDate.AddDate(0, 1, 0)
 
 	var income, expense float64
 	var netBalance float64
 
 	// Total Income
-	s.db.Model(&models.Transaction{}).
-		Where("type = ? AND date BETWEEN ? AND ?", "income", startDate, endDate).
-		Select("COALESCE(SUM(amount), 0)").Scan(&income)
+	if err := s.db.Model(&models.Transaction{}).
+		Where("type = ? AND date >= ? AND date < ?", "income", startDate, nextMonthStart).
+		Select("COALESCE(SUM(amount), 0)").Scan(&income).Error; err != nil {
+		return nil, fmt.Errorf("failed to query income: %w", err)
+	}
 
 	// Total Expense
-	s.db.Model(&models.Transaction{}).
-		Where("type = ? AND date BETWEEN ? AND ?", "expense", startDate, endDate).
-		Select("COALESCE(SUM(amount), 0)").Scan(&expense)
+	if err := s.db.Model(&models.Transaction{}).
+		Where("type = ? AND date >= ? AND date < ?", "expense", startDate, nextMonthStart).
+		Select("COALESCE(SUM(amount), 0)").Scan(&expense).Error; err != nil {
+		return nil, fmt.Errorf("failed to query expense: %w", err)
+	}
 
 	// Net Balance (from all wallets)
-	s.db.Model(&models.Wallet{}).Select("COALESCE(SUM(balance), 0)").Scan(&netBalance)
+	if err := s.db.Model(&models.Wallet{}).
+		Select("COALESCE(SUM(balance), 0)").Scan(&netBalance).Error; err != nil {
+		return nil, fmt.Errorf("failed to query net balance: %w", err)
+	}
 
 	// Category Breakdown
 	type Result struct {
@@ -48,14 +56,16 @@ func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.Month
 	}
 	var results []Result
 
-	s.db.Table("transactions").
+	if err := s.db.Table("transactions").
 		Select("categories.name as category_name, COALESCE(SUM(transactions.amount), 0) as total, categories.budget_limit as budget_limit").
 		Joins("left join categories on categories.id = transactions.category_id").
-		Where("transactions.type = ? AND transactions.date BETWEEN ? AND ?", "expense", startDate, endDate).
+		Where("transactions.type = ? AND transactions.date >= ? AND transactions.date < ?", "expense", startDate, nextMonthStart).
 		Group("categories.id, categories.name, categories.budget_limit").
-		Scan(&results)
+		Scan(&results).Error; err != nil {
+		return nil, fmt.Errorf("failed to query category breakdown: %w", err)
+	}
 
-	var breakdown []models.CategoryBreakdown
+	breakdown := make([]models.CategoryBreakdown, 0)
 	for _, r := range results {
 		percentage := 0.0
 		if expense > 0 {
