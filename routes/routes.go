@@ -7,9 +7,10 @@ import (
 )
 
 type RouterConfig struct {
-	WalletController   *controllers.WalletController
-	CategoryController *controllers.CategoryController
-	ChatController     *controllers.ChatController
+	WalletController    *controllers.WalletController
+	CategoryController  *controllers.CategoryController
+	ChatController      *controllers.ChatController
+	AnalyticsController *controllers.AnalyticsController
 }
 
 func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
@@ -33,5 +34,8 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 
 		// Chat route (AI-powered transaction)
 		api.POST("/chat", cfg.ChatController.Chat)
+
+		// Analytics route
+		api.GET("/summary", cfg.AnalyticsController.GetSummary)
 	}
 }

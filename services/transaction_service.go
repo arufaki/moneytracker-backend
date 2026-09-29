@@ -3,6 +3,8 @@ package services
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"money-tracker-ai/models"
 	"money-tracker-ai/repositories"
 	"sync"
@@ -136,6 +138,27 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 		wallet.Name,
 		wallet.Balance,
 	)
+
+	// --- Step 6: Budget Warning ---
+	if string(parsed.Type) == "expense" {
+		now := time.Now()
+		startDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		endDate := startDate.AddDate(0, 1, 0).Add(-time.Second)
+
+		var totalExpense float64
+		s.db.Model(&models.Transaction{}).
+			Where("category_id = ? AND type = ? AND date BETWEEN ? AND ?", category.ID, "expense", startDate, endDate).
+			Select("COALESCE(SUM(amount), 0)").Scan(&totalExpense)
+
+		var latestCategory models.Category
+		s.db.First(&latestCategory, category.ID)
+
+		if latestCategory.BudgetLimit > 0 && totalExpense > latestCategory.BudgetLimit {
+			warningMsg := fmt.Sprintf("\n⚠️ PERINGATAN: Pengeluaran kategori %s bulan ini sudah mencapai Rp %.0f (Batas Budget: Rp %.0f).",
+				latestCategory.Name, totalExpense, latestCategory.BudgetLimit)
+			confirmationMsg += warningMsg
+		}
+	}
 
 	return &models.ChatResponse{
 		Success:       true,

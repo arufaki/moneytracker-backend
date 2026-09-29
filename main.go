@@ -44,11 +44,13 @@ func main() {
 	log.Println("AI Service initialized")
 
 	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, config.DB)
+	analyticsSvc := services.NewAnalyticsService(config.DB)
 
 	// Controllers
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
 	chatCtrl := controllers.NewChatController(transactionSvc)
+	analyticsCtrl := controllers.NewAnalyticsController(analyticsSvc)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -69,9 +71,10 @@ func main() {
 
 	// Register all API routes
 	routes.SetupRoutes(r, routes.RouterConfig{
-		WalletController:   walletCtrl,
-		CategoryController: categoryCtrl,
-		ChatController:     chatCtrl,
+		WalletController:    walletCtrl,
+		CategoryController:  categoryCtrl,
+		ChatController:      chatCtrl,
+		AnalyticsController: analyticsCtrl,
 	})
 
 	// Start server
