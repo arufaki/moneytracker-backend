@@ -6,6 +6,10 @@ import (
 	"os"
 
 	"money-tracker-ai/config"
+	"money-tracker-ai/controllers"
+	"money-tracker-ai/repositories"
+	"money-tracker-ai/routes"
+	"money-tracker-ai/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -24,6 +28,19 @@ func main() {
 	// Run migrations and seed default data
 	config.MigrateAndSeed(config.DB)
 
+	// --- Dependency Injection (manual wiring) ---
+	// Repositories
+	walletRepo := repositories.NewWalletRepository(config.DB)
+	categoryRepo := repositories.NewCategoryRepository(config.DB)
+
+	// Services
+	walletSvc := services.NewWalletService(walletRepo)
+	categorySvc := services.NewCategoryService(categoryRepo)
+
+	// Controllers
+	walletCtrl := controllers.NewWalletController(walletSvc)
+	categoryCtrl := controllers.NewCategoryController(categorySvc)
+
 	// Setup Gin router
 	r := gin.Default()
 
@@ -39,6 +56,12 @@ func main() {
 			"status":    "ok",
 			"db_status": dbStatus,
 		})
+	})
+
+	// Register all API routes
+	routes.SetupRoutes(r, routes.RouterConfig{
+		WalletController:   walletCtrl,
+		CategoryController: categoryCtrl,
 	})
 
 	// Start server
