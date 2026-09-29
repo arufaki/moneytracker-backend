@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 
+	"money-tracker-ai/models"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -28,4 +30,46 @@ func ConnectDatabase() {
 
 	fmt.Println("Database connection successfully opened")
 	DB = database
+}
+
+// MigrateAndSeed menjalankan auto-migration dan seeding data default
+func MigrateAndSeed(db *gorm.DB) {
+	// Auto-migrate semua model
+	err := db.AutoMigrate(
+		&models.Wallet{},
+		&models.Category{},
+		&models.Transaction{},
+		&models.AILog{},
+	)
+	if err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
+	fmt.Println("Database migrated successfully")
+
+	// Seed Categories default jika tabel masih kosong
+	var categoryCount int64
+	db.Model(&models.Category{}).Count(&categoryCount)
+	if categoryCount == 0 {
+		defaultCategories := []models.Category{
+			{Name: "Makanan", Type: "expense"},
+			{Name: "Transportasi", Type: "expense"},
+			{Name: "Gaji", Type: "income"},
+			{Name: "Hiburan", Type: "expense"},
+			{Name: "Belanja", Type: "expense"},
+			{Name: "Tagihan", Type: "expense"},
+		}
+		db.Create(&defaultCategories)
+		fmt.Println("Categories seeded successfully")
+	}
+
+	// Seed Wallets default jika tabel masih kosong
+	var walletCount int64
+	db.Model(&models.Wallet{}).Count(&walletCount)
+	if walletCount == 0 {
+		defaultWallets := []models.Wallet{
+			{Name: "Cash", Balance: 0},
+		}
+		db.Create(&defaultWallets)
+		fmt.Println("Wallets seeded successfully")
+	}
 }
