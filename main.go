@@ -37,6 +37,10 @@ func main() {
 	walletSvc := services.NewWalletService(walletRepo)
 	categorySvc := services.NewCategoryService(categoryRepo)
 
+	// AI Setup
+	aiLogRepo := repositories.NewAILogRepository(config.DB)
+	_ = services.NewAIService(aiLogRepo) // akan dipakai di Issue #5
+
 	// Controllers
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
