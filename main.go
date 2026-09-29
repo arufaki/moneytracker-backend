@@ -21,6 +21,9 @@ func main() {
 	// Initialize database connection
 	config.ConnectDatabase()
 
+	// Run migrations and seed default data
+	config.MigrateAndSeed(config.DB)
+
 	// Setup Gin router
 	r := gin.Default()
 
