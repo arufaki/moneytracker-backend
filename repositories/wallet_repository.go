@@ -11,6 +11,7 @@ type WalletRepository interface {
 	FindByID(id uint) (*models.Wallet, error)
 	Create(wallet *models.Wallet) error
 	UpdateBalance(id uint, newBalance float64) error
+	FindByName(name string) (*models.Wallet, error)
 }
 
 type walletRepository struct {
@@ -49,4 +50,13 @@ func (r *walletRepository) UpdateBalance(id uint, newBalance float64) error {
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func (r *walletRepository) FindByName(name string) (*models.Wallet, error) {
+	var wallet models.Wallet
+	err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&wallet).Error
+	if err != nil {
+		return nil, err
+	}
+	return &wallet, nil
 }

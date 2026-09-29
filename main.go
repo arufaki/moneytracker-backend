@@ -38,18 +38,17 @@ func main() {
 	categorySvc := services.NewCategoryService(categoryRepo)
 
 	// AI Setup
-	if os.Getenv("GEMINI_API_KEY") != "" {
-		aiLogRepo := repositories.NewAILogRepository(config.DB)
-		aiSvc := services.NewAIService(aiLogRepo) // akan dipakai di Issue #5
-		defer aiSvc.Close()
-		log.Println("AI Service initialized")
-	} else {
-		log.Println("GEMINI_API_KEY not set, AI Service skipped")
-	}
+	aiLogRepo := repositories.NewAILogRepository(config.DB)
+	aiSvc := services.NewAIService(aiLogRepo)
+	defer aiSvc.Close()
+	log.Println("AI Service initialized")
+
+	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, config.DB)
 
 	// Controllers
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
+	chatCtrl := controllers.NewChatController(transactionSvc)
 
 	// Setup Gin router
 	r := gin.Default()
@@ -72,6 +71,7 @@ func main() {
 	routes.SetupRoutes(r, routes.RouterConfig{
 		WalletController:   walletCtrl,
 		CategoryController: categoryCtrl,
+		ChatController:     chatCtrl,
 	})
 
 	// Start server
