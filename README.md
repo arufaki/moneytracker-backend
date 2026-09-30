@@ -1,4 +1,4 @@
-﻿# Money Tracker AI - Backend
+# Money Tracker AI - Backend
 
 Backend REST API untuk aplikasi pencatatan keuangan pribadi berbasis AI. Pengguna dapat mencatat transaksi hanya dengan mengirim pesan teks bebas dalam bahasa Indonesia, kemudian sistem akan mengekstrak informasi transaksi secara otomatis menggunakan Google Gemini AI.
 
@@ -73,7 +73,6 @@ moneytracker/
 |-- .gitignore                       # Daftar file yang diabaikan git
 |-- go.mod                           # Deklarasi module dan dependensi Go
 |-- go.sum                           # Checksum dependensi
-|-- prd.md                           # Product Requirements Document
 |
 |-- config/
 |   `-- database.go                  # Koneksi database, auto-migration, dan seeding data default
