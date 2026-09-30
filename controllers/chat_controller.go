@@ -16,8 +16,17 @@ func NewChatController(service services.TransactionService) *ChatController {
 	return &ChatController{service: service}
 }
 
-// Chat handles POST /api/chat
-// User mengirim pesan teks, server memproses dan mencatat transaksi
+// Chat godoc
+// @Summary     AI Chat untuk input transaksi
+// @Description Mengirim pesan natural language untuk merekam transaksi via AI
+// @Tags        AI Chat
+// @Accept      json
+// @Produce     json
+// @Param       body  body      models.ChatRequest  true  "Chat payload"
+// @Success     200   {object}  models.ChatResponse
+// @Failure     400   {object}  map[string]interface{}
+// @Failure     500   {object}  map[string]interface{}
+// @Router      /chat [post]
 func (ctrl *ChatController) Chat(c *gin.Context) {
 	var req models.ChatRequest
 

@@ -19,7 +19,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, float64(0), response["income"])
 		assert.Equal(t, float64(0), response["expense"])
 		assert.Equal(t, float64(0), response["net_balance"])
@@ -48,7 +49,8 @@ func TestSummary(t *testing.T) {
 		w := DoRequest("GET", "/api/summary", nil)
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		
 		// only current month (10000)
 		assert.Equal(t, float64(10000), response["expense"])
@@ -77,7 +79,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, float64(15000), response["expense"])
 	})
 
@@ -90,7 +93,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, float64(500000), response["net_balance"])
 	})
 
@@ -112,7 +116,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		
 		breakdowns := response["breakdown"].([]interface{})
 		assert.Len(t, breakdowns, 2)
@@ -148,7 +153,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		breakdowns := response["breakdown"].([]interface{})
 		
 		assert.True(t, breakdowns[0].(map[string]interface{})["is_over_budget"].(bool))
@@ -159,7 +165,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "month must be between 1 and 12", response["error"])
 	})
 
@@ -168,7 +175,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Contains(t, response["error"].(string), "month")
 	})
 
@@ -177,7 +185,8 @@ func TestSummary(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Contains(t, response["error"].(string), "year")
 	})
 }

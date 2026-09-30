@@ -7,14 +7,25 @@ import (
 
 	"money-tracker-ai/config"
 	"money-tracker-ai/controllers"
+	_ "money-tracker-ai/docs"
 	"money-tracker-ai/repositories"
 	"money-tracker-ai/routes"
 	"money-tracker-ai/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title           MoneyTracker API
+// @version         1.0
+// @description     REST API untuk aplikasi pencatat keuangan berbasis AI.
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @schemes http https
 func main() {
 	// Load .env file
 	err := godotenv.Load()
@@ -54,6 +65,9 @@ func main() {
 
 	// Setup Gin router
 	r := gin.Default()
+
+	// Swagger UI route
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Healthcheck endpoint
 	r.GET("/ping", func(c *gin.Context) {
