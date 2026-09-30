@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -18,7 +19,8 @@ func TestCategory_GetAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Empty(t, response["data"])
 	})
 
@@ -31,7 +33,8 @@ func TestCategory_GetAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].([]interface{})
 		assert.Len(t, data, 2)
 	})
@@ -43,11 +46,13 @@ func TestCategory_GetByID(t *testing.T) {
 		cat := models.Category{Name: "Belanja", Type: "expense"}
 		config.DB.Create(&cat)
 
-		w := DoRequest("GET", "/api/categories/1", nil)
+		url := fmt.Sprintf("/api/categories/%d", cat.ID)
+		w := DoRequest("GET", url, nil)
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, "Belanja", data["name"])
 	})
@@ -58,7 +63,8 @@ func TestCategory_GetByID(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "category not found", response["error"])
 	})
 
@@ -67,7 +73,8 @@ func TestCategory_GetByID(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "invalid category ID", response["error"])
 	})
 }
@@ -80,7 +87,8 @@ func TestCategory_Create(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, "Kesehatan", data["name"])
 	})

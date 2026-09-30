@@ -33,7 +33,8 @@ func TestChat(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.True(t, response["success"].(bool))
 
 		var wallet models.Wallet
@@ -60,7 +61,8 @@ func TestChat(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.False(t, response["success"].(bool))
 		assert.Equal(t, "insufficient balance", response["error"])
 	})
@@ -84,7 +86,8 @@ func TestChat(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.True(t, response["success"].(bool))
 
 		var wallet models.Wallet
@@ -139,12 +142,14 @@ func TestChat(t *testing.T) {
 
 	t.Run("Skenario 8.6: Transaksi pengeluaran yang melebihi batas budget kategori (Budget Warning)", func(t *testing.T) {
 		CleanDatabase()
-		config.DB.Create(&models.Wallet{Name: "Cash", Balance: 100000})
+		wallet := models.Wallet{Name: "Cash", Balance: 100000}
+		config.DB.Create(&wallet)
 		
 		limit := float64(100000)
-		config.DB.Create(&models.Category{Name: "Hiburan", Type: "expense", BudgetLimit: limit})
+		cat := models.Category{Name: "Hiburan", Type: "expense", BudgetLimit: limit}
+		config.DB.Create(&cat)
 		config.DB.Create(&models.Transaction{
-			WalletID: 1, CategoryID: 1, Amount: 80000, Type: "expense",
+			WalletID: wallet.ID, CategoryID: cat.ID, Amount: 80000, Type: "expense",
 		}) // sisa budget 20000
 
 		msg := "Nonton 30k dari Cash"
@@ -161,7 +166,8 @@ func TestChat(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		
 		msgResponse, ok := response["message"].(string)
 		assert.True(t, ok)
@@ -173,7 +179,8 @@ func TestChat(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "Field 'message' wajib diisi", response["error"])
 	})
 
@@ -188,7 +195,8 @@ func TestChat(t *testing.T) {
 		
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.False(t, response["success"].(bool))
 	})
 }

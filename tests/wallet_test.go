@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -18,7 +19,8 @@ func TestWallet_GetAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Empty(t, response["data"])
 	})
 
@@ -31,7 +33,8 @@ func TestWallet_GetAll(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		
 		data := response["data"].([]interface{})
 		assert.Len(t, data, 2)
@@ -44,11 +47,13 @@ func TestWallet_GetByID(t *testing.T) {
 		wallet := models.Wallet{Name: "OVO", Balance: 50000}
 		config.DB.Create(&wallet)
 
-		w := DoRequest("GET", "/api/wallets/1", nil) // asumsi ID 1 krn TRUNCATE RESTART IDENTITY
+		url := fmt.Sprintf("/api/wallets/%d", wallet.ID)
+		w := DoRequest("GET", url, nil)
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, "OVO", data["name"])
 	})
@@ -59,7 +64,8 @@ func TestWallet_GetByID(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "wallet not found", response["error"])
 	})
 
@@ -68,7 +74,8 @@ func TestWallet_GetByID(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		assert.Equal(t, "invalid wallet ID", response["error"])
 	})
 }
@@ -81,7 +88,8 @@ func TestWallet_Create(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, "Bank Jago", data["name"])
 		assert.Equal(t, float64(500000), data["balance"])
@@ -94,7 +102,8 @@ func TestWallet_Create(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 		
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err)
 		data := response["data"].(map[string]interface{})
 		assert.Equal(t, float64(0), data["balance"])
 	})
