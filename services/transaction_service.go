@@ -148,7 +148,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 
 		var totalExpense float64
 		if err := s.db.Model(&models.Transaction{}).
-			Where("category_id = ? AND type = ? AND date >= ? AND date < ?", category.ID, "expense", startDate, nextMonthStart).
+			Where("category_id = ? AND type = ? AND created_at >= ? AND created_at < ?", category.ID, "expense", startDate, nextMonthStart).
 			Select("COALESCE(SUM(amount), 0)").Scan(&totalExpense).Error; err != nil {
 			log.Printf("[WARN] failed to check budget total expense: %v", err)
 		} else {

@@ -30,14 +30,14 @@ func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.Month
 
 	// Total Income
 	if err := s.db.Model(&models.Transaction{}).
-		Where("type = ? AND date >= ? AND date < ?", "income", startDate, nextMonthStart).
+		Where("type = ? AND created_at >= ? AND created_at < ?", "income", startDate, nextMonthStart).
 		Select("COALESCE(SUM(amount), 0)").Scan(&income).Error; err != nil {
 		return nil, fmt.Errorf("failed to query income: %w", err)
 	}
 
 	// Total Expense
 	if err := s.db.Model(&models.Transaction{}).
-		Where("type = ? AND date >= ? AND date < ?", "expense", startDate, nextMonthStart).
+		Where("type = ? AND created_at >= ? AND created_at < ?", "expense", startDate, nextMonthStart).
 		Select("COALESCE(SUM(amount), 0)").Scan(&expense).Error; err != nil {
 		return nil, fmt.Errorf("failed to query expense: %w", err)
 	}
@@ -59,7 +59,7 @@ func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.Month
 	if err := s.db.Table("transactions").
 		Select("categories.name as category_name, COALESCE(SUM(transactions.amount), 0) as total, categories.budget_limit as budget_limit").
 		Joins("left join categories on categories.id = transactions.category_id").
-		Where("transactions.type = ? AND transactions.date >= ? AND transactions.date < ?", "expense", startDate, nextMonthStart).
+		Where("transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ?", "expense", startDate, nextMonthStart).
 		Group("categories.id, categories.name, categories.budget_limit").
 		Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("failed to query category breakdown: %w", err)
