@@ -1,0 +1,68 @@
+package controllers
+
+import (
+	"log"
+	"net/http"
+	"strconv"
+	"time"
+
+	"money-tracker-ai/services"
+
+	"github.com/gin-gonic/gin"
+)
+
+type AnalyticsController struct {
+	analyticsService services.AnalyticsService
+}
+
+func NewAnalyticsController(analyticsService services.AnalyticsService) *AnalyticsController {
+	return &AnalyticsController{analyticsService: analyticsService}
+}
+
+// GetSummary godoc
+// @Summary     Get financial summary
+// @Description Mengambil ringkasan keuangan (pemasukan, pengeluaran, saldo)
+// @Tags        Analytics
+// @Produce     json
+// @Param       month  query     int  false  "Bulan (1-12)"
+// @Param       year   query     int  false  "Tahun (contoh: 2026)"
+// @Success     200    {object}  models.MonthlySummary
+// @Failure     400    {object}  map[string]interface{}
+// @Failure     500    {object}  map[string]interface{}
+// @Router      /summary [get]
+func (c *AnalyticsController) GetSummary(ctx *gin.Context) {
+	now := time.Now()
+	monthStr := ctx.Query("month")
+	yearStr := ctx.Query("year")
+
+	month := int(now.Month())
+	year := now.Year()
+
+	if monthStr != "" {
+		m, err := strconv.Atoi(monthStr)
+		if err != nil || m < 1 || m > 12 {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "month must be between 1 and 12"})
+			return
+		}
+		month = m
+	}
+
+	if yearStr != "" {
+		y, err := strconv.Atoi(yearStr)
+		if err == nil {
+			year = y
+		} else {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid year"})
+			return
+		}
+	}
+
+	summary, err := c.analyticsService.GetMonthlySummary(month, year)
+	if err != nil {
+		log.Printf("[ERROR] GetSummary: %v", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, summary)
+}

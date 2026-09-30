@@ -6,11 +6,26 @@ import (
 	"os"
 
 	"money-tracker-ai/config"
+	"money-tracker-ai/controllers"
+	_ "money-tracker-ai/docs"
+	"money-tracker-ai/repositories"
+	"money-tracker-ai/routes"
+	"money-tracker-ai/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title           MoneyTracker API
+// @version         1.0
+// @description     REST API untuk aplikasi pencatat keuangan berbasis AI.
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @schemes http https
 func main() {
 	// Load .env file
 	err := godotenv.Load()
@@ -24,8 +39,35 @@ func main() {
 	// Run migrations and seed default data
 	config.MigrateAndSeed(config.DB)
 
+	// --- Dependency Injection (manual wiring) ---
+	// Repositories
+	walletRepo := repositories.NewWalletRepository(config.DB)
+	categoryRepo := repositories.NewCategoryRepository(config.DB)
+
+	// Services
+	walletSvc := services.NewWalletService(walletRepo)
+	categorySvc := services.NewCategoryService(categoryRepo)
+
+	// AI Setup
+	aiLogRepo := repositories.NewAILogRepository(config.DB)
+	aiSvc := services.NewAIService(aiLogRepo)
+	defer aiSvc.Close()
+	log.Println("AI Service initialized")
+
+	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, config.DB)
+	analyticsSvc := services.NewAnalyticsService(config.DB)
+
+	// Controllers
+	walletCtrl := controllers.NewWalletController(walletSvc)
+	categoryCtrl := controllers.NewCategoryController(categorySvc)
+	chatCtrl := controllers.NewChatController(transactionSvc)
+	analyticsCtrl := controllers.NewAnalyticsController(analyticsSvc)
+
 	// Setup Gin router
 	r := gin.Default()
+
+	// Swagger UI route
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Healthcheck endpoint
 	r.GET("/ping", func(c *gin.Context) {
@@ -39,6 +81,14 @@ func main() {
 			"status":    "ok",
 			"db_status": dbStatus,
 		})
+	})
+
+	// Register all API routes
+	routes.SetupRoutes(r, routes.RouterConfig{
+		WalletController:    walletCtrl,
+		CategoryController:  categoryCtrl,
+		ChatController:      chatCtrl,
+		AnalyticsController: analyticsCtrl,
 	})
 
 	// Start server
