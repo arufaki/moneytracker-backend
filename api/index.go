@@ -6,11 +6,14 @@ import (
 
 	"money-tracker-ai/config"
 	"money-tracker-ai/controllers"
+	_ "money-tracker-ai/docs"
 	"money-tracker-ai/repositories"
 	"money-tracker-ai/routes"
 	"money-tracker-ai/services"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var (
@@ -42,6 +45,34 @@ func initApp() {
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
 	chatCtrl := controllers.NewChatController(transactionSvc)
 	analyticsCtrl := controllers.NewAnalyticsController(analyticsSvc)
+
+	// Swagger UI route
+	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Healthcheck endpoint
+	app.GET("/ping", func(c *gin.Context) {
+		dbStatus := "connected"
+		if config.DB != nil {
+			sqlDB, err := config.DB.DB()
+			if err != nil || sqlDB.Ping() != nil {
+				dbStatus = "disconnected"
+			}
+		} else {
+			dbStatus = "disconnected"
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"db_status": dbStatus,
+		})
+	})
+
+	// Root endpoint
+	app.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "MoneyTracker API is running on Vercel",
+		})
+	})
 
 	routes.SetupRoutes(app, routes.RouterConfig{
 		WalletController:    walletCtrl,
