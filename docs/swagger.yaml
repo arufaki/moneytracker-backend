@@ -1,0 +1,367 @@
+basePath: /api
+definitions:
+  models.Category:
+    properties:
+      budget_limit:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      type:
+        description: '''income'' / ''expense'''
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.CategoryBreakdown:
+    properties:
+      budget_limit:
+        type: number
+      category_name:
+        type: string
+      is_over_budget:
+        type: boolean
+      percentage:
+        type: number
+      total:
+        type: number
+    type: object
+  models.ChatRequest:
+    properties:
+      message:
+        type: string
+    required:
+    - message
+    type: object
+  models.ChatResponse:
+    properties:
+      message:
+        type: string
+      parsed_data:
+        $ref: '#/definitions/models.ParsedTransaction'
+      success:
+        type: boolean
+      transaction:
+        $ref: '#/definitions/models.Transaction'
+      updated_wallet:
+        $ref: '#/definitions/models.Wallet'
+    type: object
+  models.MonthlySummary:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/models.CategoryBreakdown'
+        type: array
+      expense:
+        type: number
+      income:
+        type: number
+      month:
+        type: integer
+      net_balance:
+        type: number
+      year:
+        type: integer
+    type: object
+  models.ParsedTransaction:
+    properties:
+      amount:
+        description: 'Nominal uang, contoh: 35000'
+        type: number
+      category:
+        description: 'Nama kategori, contoh: "Makanan"'
+        type: string
+      description:
+        description: 'Deskripsi singkat, contoh: "dimsum mentai"'
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/models.TransactionType'
+        description: '"income" atau "expense"'
+      wallet:
+        description: 'Nama wallet, contoh: "GoPay"'
+        type: string
+    type: object
+  models.Transaction:
+    properties:
+      amount:
+        type: number
+      category:
+        $ref: '#/definitions/models.Category'
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      type:
+        description: '''income'' / ''expense'''
+        type: string
+      wallet:
+        $ref: '#/definitions/models.Wallet'
+      wallet_id:
+        type: integer
+    type: object
+  models.TransactionType:
+    enum:
+    - income
+    - expense
+    type: string
+    x-enum-varnames:
+    - TransactionTypeIncome
+    - TransactionTypeExpense
+  models.Wallet:
+    properties:
+      balance:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API untuk aplikasi pencatat keuangan berbasis AI.
+  title: MoneyTracker API
+  version: "1.0"
+paths:
+  /categories:
+    get:
+      description: Mengambil semua kategori transaksi
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all categories
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: Membuat kategori transaksi baru
+      parameters:
+      - description: Category payload
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            name:
+              type: string
+            type:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new category
+      tags:
+      - Categories
+  /categories/{id}:
+    get:
+      description: Mengambil kategori berdasarkan ID
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get category by ID
+      tags:
+      - Categories
+  /chat:
+    post:
+      consumes:
+      - application/json
+      description: Mengirim pesan natural language untuk merekam transaksi via AI
+      parameters:
+      - description: Chat payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.ChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: AI Chat untuk input transaksi
+      tags:
+      - AI Chat
+  /summary:
+    get:
+      description: Mengambil ringkasan keuangan (pemasukan, pengeluaran, saldo)
+      parameters:
+      - description: Bulan (1-12)
+        in: query
+        name: month
+        type: integer
+      - description: 'Tahun (contoh: 2026)'
+        in: query
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MonthlySummary'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get financial summary
+      tags:
+      - Analytics
+  /wallets:
+    get:
+      description: Mengambil semua data wallet yang tersedia
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all wallets
+      tags:
+      - Wallets
+    post:
+      consumes:
+      - application/json
+      description: Membuat wallet baru dengan nama dan saldo awal
+      parameters:
+      - description: Wallet payload
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            balance:
+              type: number
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new wallet
+      tags:
+      - Wallets
+  /wallets/{id}:
+    get:
+      description: Mengambil data wallet berdasarkan ID
+      parameters:
+      - description: Wallet ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get wallet by ID
+      tags:
+      - Wallets
+schemes:
+- http
+- https
+swagger: "2.0"

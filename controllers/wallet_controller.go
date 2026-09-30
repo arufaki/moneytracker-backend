@@ -19,7 +19,13 @@ func NewWalletController(service services.WalletService) *WalletController {
 }
 
 // GetAllWallets godoc
-// GET /api/wallets
+// @Summary     Get all wallets
+// @Description Mengambil semua data wallet yang tersedia
+// @Tags        Wallets
+// @Produce     json
+// @Success     200  {object}  map[string]interface{}
+// @Failure     500  {object}  map[string]interface{}
+// @Router      /wallets [get]
 func (ctrl *WalletController) GetAllWallets(c *gin.Context) {
 	wallets, err := ctrl.service.GetAllWallets()
 	if err != nil {
@@ -30,7 +36,15 @@ func (ctrl *WalletController) GetAllWallets(c *gin.Context) {
 }
 
 // GetWalletByID godoc
-// GET /api/wallets/:id
+// @Summary     Get wallet by ID
+// @Description Mengambil data wallet berdasarkan ID
+// @Tags        Wallets
+// @Produce     json
+// @Param       id   path      int  true  "Wallet ID"
+// @Success     200  {object}  map[string]interface{}
+// @Failure     400  {object}  map[string]interface{}
+// @Failure     404  {object}  map[string]interface{}
+// @Router      /wallets/{id} [get]
 func (ctrl *WalletController) GetWalletByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -52,8 +66,15 @@ func (ctrl *WalletController) GetWalletByID(c *gin.Context) {
 }
 
 // CreateWallet godoc
-// POST /api/wallets
-// Body: { "name": "BCA", "balance": 1000000 }
+// @Summary     Create a new wallet
+// @Description Membuat wallet baru dengan nama dan saldo awal
+// @Tags        Wallets
+// @Accept      json
+// @Produce     json
+// @Param       body  body      object{name=string,balance=number}  true  "Wallet payload"
+// @Success     201   {object}  map[string]interface{}
+// @Failure     400   {object}  map[string]interface{}
+// @Router      /wallets [post]
 func (ctrl *WalletController) CreateWallet(c *gin.Context) {
 	var body struct {
 		Name    string  `json:"name" binding:"required"`

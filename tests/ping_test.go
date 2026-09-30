@@ -24,7 +24,10 @@ func TestPing(t *testing.T) {
 	})
 
 	t.Run("Skenario 1.2: Database terputus / error (Unhealthy)", func(t *testing.T) {
-		// Simulasikan database terputus
+		originalDB := config.DB
+		
+		// Buat koneksi baru dan langsung tutup agar statusnya disconnected
+		config.ConnectDatabase()
 		sqlDB, _ := config.DB.DB()
 		sqlDB.Close()
 
@@ -38,7 +41,7 @@ func TestPing(t *testing.T) {
 		assert.Equal(t, "ok", response["status"])
 		assert.Equal(t, "disconnected", response["db_status"])
 
-		// Reconnect untuk test lain
-		SetupTestRouter()
+		// Kembalikan koneksi asli tanpa rebuild router
+		config.DB = originalDB
 	})
 }

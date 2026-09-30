@@ -19,7 +19,13 @@ func NewCategoryController(service services.CategoryService) *CategoryController
 }
 
 // GetAllCategories godoc
-// GET /api/categories
+// @Summary     Get all categories
+// @Description Mengambil semua kategori transaksi
+// @Tags        Categories
+// @Produce     json
+// @Success     200  {object}  map[string]interface{}
+// @Failure     500  {object}  map[string]interface{}
+// @Router      /categories [get]
 func (ctrl *CategoryController) GetAllCategories(c *gin.Context) {
 	categories, err := ctrl.service.GetAllCategories()
 	if err != nil {
@@ -30,7 +36,15 @@ func (ctrl *CategoryController) GetAllCategories(c *gin.Context) {
 }
 
 // GetCategoryByID godoc
-// GET /api/categories/:id
+// @Summary     Get category by ID
+// @Description Mengambil kategori berdasarkan ID
+// @Tags        Categories
+// @Produce     json
+// @Param       id   path      int  true  "Category ID"
+// @Success     200  {object}  map[string]interface{}
+// @Failure     400  {object}  map[string]interface{}
+// @Failure     404  {object}  map[string]interface{}
+// @Router      /categories/{id} [get]
 func (ctrl *CategoryController) GetCategoryByID(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -52,8 +66,15 @@ func (ctrl *CategoryController) GetCategoryByID(c *gin.Context) {
 }
 
 // CreateCategory godoc
-// POST /api/categories
-// Body: { "name": "Investasi", "type": "income" }
+// @Summary     Create a new category
+// @Description Membuat kategori transaksi baru
+// @Tags        Categories
+// @Accept      json
+// @Produce     json
+// @Param       body  body      object{name=string,type=string}  true  "Category payload"
+// @Success     201   {object}  map[string]interface{}
+// @Failure     400   {object}  map[string]interface{}
+// @Router      /categories [post]
 func (ctrl *CategoryController) CreateCategory(c *gin.Context) {
 	var body struct {
 		Name string `json:"name" binding:"required"`
