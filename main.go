@@ -58,6 +58,7 @@ func main() {
 	analyticsSvc := services.NewAnalyticsService(config.DB)
 
 	// Controllers
+	rootCtrl := controllers.NewRootController()
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
 	chatCtrl := controllers.NewChatController(transactionSvc)
@@ -85,6 +86,7 @@ func main() {
 
 	// Register all API routes
 	routes.SetupRoutes(r, routes.RouterConfig{
+		RootController:      rootCtrl,
 		WalletController:    walletCtrl,
 		CategoryController:  categoryCtrl,
 		ChatController:      chatCtrl,

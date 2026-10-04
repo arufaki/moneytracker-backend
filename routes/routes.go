@@ -7,6 +7,7 @@ import (
 )
 
 type RouterConfig struct {
+	RootController      *controllers.RootController
 	WalletController    *controllers.WalletController
 	CategoryController  *controllers.CategoryController
 	ChatController      *controllers.ChatController
@@ -14,6 +15,8 @@ type RouterConfig struct {
 }
 
 func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
+	r.GET("/", cfg.RootController.GetAPIDocumentation)
+
 	api := r.Group("/api")
 	{
 		// Wallet routes
