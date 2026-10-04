@@ -15,11 +15,7 @@ type RouterConfig struct {
 }
 
 func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
-	rootCtrl := cfg.RootController
-	if rootCtrl == nil {
-		rootCtrl = controllers.NewRootController()
-	}
-	r.GET("/", rootCtrl.GetAPIDocumentation)
+	r.GET("/", cfg.RootController.GetAPIDocumentation)
 
 	api := r.Group("/api")
 	{
