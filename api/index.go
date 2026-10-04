@@ -41,6 +41,7 @@ func initApp() {
 	transactionSvc := services.NewTransactionService(aiSvc, walletRepo, categoryRepo, config.DB)
 	analyticsSvc := services.NewAnalyticsService(config.DB)
 
+	rootCtrl := controllers.NewRootController()
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
 	chatCtrl := controllers.NewChatController(transactionSvc)
@@ -67,14 +68,8 @@ func initApp() {
 		})
 	})
 
-	// Root endpoint
-	app.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "MoneyTracker API is running on Vercel",
-		})
-	})
-
 	routes.SetupRoutes(app, routes.RouterConfig{
+		RootController:      rootCtrl,
 		WalletController:    walletCtrl,
 		CategoryController:  categoryCtrl,
 		ChatController:      chatCtrl,
