@@ -14,8 +14,6 @@ import (
 	"google.golang.org/genai"
 )
 
-// System Prompt: Instruksi ke AI untuk selalu merespons dalam format JSON
-// yang sesuai dengan struct ParsedIntent. Jangan ubah prompt ini sembarangan!
 const systemPrompt = `Kamu adalah asisten pencatat dan pengelola keuangan.
 Tugasmu adalah menganalisis pesan pengguna dan merespons HANYA dengan JSON valid.
 
@@ -66,7 +64,7 @@ Output: {"intent":"manage_wallet","actions":[{"action":"delete_wallet","wallet":
 PENTING: Hanya kembalikan RAW JSON tanpa markdown, tanpa backtick, tanpa penjelasan.`
 
 type AIService interface {
-	ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error)
+	ParseIntentPrompt(userMessage string, userID uint) (*models.ParsedIntent, error)
 	Close()
 }
 
@@ -93,7 +91,7 @@ func NewAIService(logRepo repositories.AILogRepository) AIService {
 	}
 }
 
-func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error) {
+func (s *aiService) ParseIntentPrompt(userMessage string, userID uint) (*models.ParsedIntent, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -128,6 +126,7 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 	}
 
 	logEntry := &models.AILog{
+		UserID:        userID,
 		RawMessage:    userMessage,
 		ExtractedJSON: cleanedText,
 	}
@@ -140,4 +139,3 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 
 func (s *aiService) Close() {
 }
-

@@ -29,7 +29,7 @@ func TestSummary(t *testing.T) {
 
 	t.Run("Skenario 9.2: Ringkasan tanpa query parameter (Default bulan & tahun berjalan)", func(t *testing.T) {
 		CleanDatabase()
-		wWallet := models.Wallet{Name: "Cash", Balance: 500000}
+		wWallet := models.Wallet{UserID: DefaultTestUser.ID, Name: "Cash", Balance: 500000}
 		config.DB.Create(&wWallet)
 		cat := models.Category{Name: "Makanan", Type: "expense"}
 		config.DB.Create(&cat)
@@ -52,13 +52,12 @@ func TestSummary(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		
-		// only current month (10000)
 		assert.Equal(t, float64(10000), response["expense"])
 	})
 
 	t.Run("Skenario 9.3: Ringkasan dengan filter bulan dan tahun spesifik", func(t *testing.T) {
 		CleanDatabase()
-		wWallet := models.Wallet{Name: "Cash", Balance: 500000}
+		wWallet := models.Wallet{UserID: DefaultTestUser.ID, Name: "Cash", Balance: 500000}
 		config.DB.Create(&wWallet)
 		cat := models.Category{Name: "Makanan", Type: "expense"}
 		config.DB.Create(&cat)
@@ -86,8 +85,8 @@ func TestSummary(t *testing.T) {
 
 	t.Run("Skenario 9.4: Kalkulasi Net Balance dari seluruh wallet aktif", func(t *testing.T) {
 		CleanDatabase()
-		config.DB.Create(&models.Wallet{Name: "Wallet A", Balance: 300000})
-		config.DB.Create(&models.Wallet{Name: "Wallet B", Balance: 200000})
+		config.DB.Create(&models.Wallet{UserID: DefaultTestUser.ID, Name: "Wallet A", Balance: 300000})
+		config.DB.Create(&models.Wallet{UserID: DefaultTestUser.ID, Name: "Wallet B", Balance: 200000})
 
 		w := DoRequest("GET", "/api/summary", nil)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -100,7 +99,7 @@ func TestSummary(t *testing.T) {
 
 	t.Run("Skenario 9.5: Kalkulasi persentase dan perincian (breakdown) per kategori pengeluaran", func(t *testing.T) {
 		CleanDatabase()
-		wWallet := models.Wallet{Name: "Cash", Balance: 500000}
+		wWallet := models.Wallet{UserID: DefaultTestUser.ID, Name: "Cash", Balance: 500000}
 		config.DB.Create(&wWallet)
 		
 		catMakanan := models.Category{Name: "Makanan", Type: "expense"}
@@ -139,7 +138,7 @@ func TestSummary(t *testing.T) {
 
 	t.Run("Skenario 9.6: Verifikasi status is_over_budget pada breakdown kategori", func(t *testing.T) {
 		CleanDatabase()
-		wWallet := models.Wallet{Name: "Cash", Balance: 500000}
+		wWallet := models.Wallet{UserID: DefaultTestUser.ID, Name: "Cash", Balance: 500000}
 		config.DB.Create(&wWallet)
 		
 		limit := float64(100000)

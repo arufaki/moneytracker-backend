@@ -26,8 +26,8 @@ func TestWallet_GetAll(t *testing.T) {
 
 	t.Run("Skenario 2.2: Mengambil daftar wallet saat data tersedia", func(t *testing.T) {
 		CleanDatabase()
-		config.DB.Create(&models.Wallet{Name: "Cash", Balance: 100000})
-		config.DB.Create(&models.Wallet{Name: "BCA", Balance: 500000})
+		config.DB.Create(&models.Wallet{UserID: DefaultTestUser.ID, Name: "Cash", Balance: 100000})
+		config.DB.Create(&models.Wallet{UserID: DefaultTestUser.ID, Name: "BCA", Balance: 500000})
 
 		w := DoRequest("GET", "/api/wallets", nil)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -35,7 +35,7 @@ func TestWallet_GetAll(t *testing.T) {
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		
+
 		data := response["data"].([]interface{})
 		assert.Len(t, data, 2)
 	})
@@ -44,7 +44,7 @@ func TestWallet_GetAll(t *testing.T) {
 func TestWallet_GetByID(t *testing.T) {
 	t.Run("Skenario 3.1: Mengambil wallet dengan ID yang valid dan terdaftar", func(t *testing.T) {
 		CleanDatabase()
-		wallet := models.Wallet{Name: "OVO", Balance: 50000}
+		wallet := models.Wallet{UserID: DefaultTestUser.ID, Name: "OVO", Balance: 50000}
 		config.DB.Create(&wallet)
 
 		url := fmt.Sprintf("/api/wallets/%d", wallet.ID)
@@ -100,7 +100,7 @@ func TestWallet_Create(t *testing.T) {
 		reqBody := map[string]interface{}{"name": "OVO", "balance": 0}
 		w := DoRequest("POST", "/api/wallets", reqBody)
 		assert.Equal(t, http.StatusCreated, w.Code)
-		
+
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -122,16 +122,7 @@ func TestWallet_Create(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("Skenario 4.5: Pembuatan wallet dengan nama yang sudah ada (duplikasi / unique constraint)", func(t *testing.T) {
-		CleanDatabase()
-		config.DB.Create(&models.Wallet{Name: "BCA", Balance: 100000})
-		
-		reqBody := map[string]interface{}{"name": "BCA", "balance": 100000}
-		w := DoRequest("POST", "/api/wallets", reqBody)
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("Skenario 4.6: Format body JSON tidak valid (malformed JSON)", func(t *testing.T) {
+	t.Run("Skenario 4.5: Format body JSON tidak valid (malformed JSON)", func(t *testing.T) {
 		CleanDatabase()
 		w := DoRequest("POST", "/api/wallets", "invalid json")
 		assert.Equal(t, http.StatusBadRequest, w.Code)

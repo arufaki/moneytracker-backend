@@ -58,6 +58,9 @@ func ConnectDatabase() {
 func MigrateAndSeed(db *gorm.DB) {
 	// Auto-migrate semua model
 	err := db.AutoMigrate(
+		&models.User{},
+		&models.EmailVerification{},
+		&models.RefreshToken{},
 		&models.Wallet{},
 		&models.Category{},
 		&models.Transaction{},
@@ -82,16 +85,5 @@ func MigrateAndSeed(db *gorm.DB) {
 		}
 		db.Create(&defaultCategories)
 		fmt.Println("Categories seeded successfully")
-	}
-
-	// Seed Wallets default jika tabel masih kosong
-	var walletCount int64
-	db.Model(&models.Wallet{}).Count(&walletCount)
-	if walletCount == 0 {
-		defaultWallets := []models.Wallet{
-			{Name: "Cash", Balance: 0},
-		}
-		db.Create(&defaultWallets)
-		fmt.Println("Wallets seeded successfully")
 	}
 }
