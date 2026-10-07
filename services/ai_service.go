@@ -15,7 +15,7 @@ import (
 )
 
 // System Prompt: Instruksi ke AI untuk selalu merespons dalam format JSON
-// yang sesuai dengan struct ParsedTransaction. Jangan ubah prompt ini sembarangan!
+// yang sesuai dengan struct ParsedIntent. Jangan ubah prompt ini sembarangan!
 const systemPrompt = `Kamu adalah asisten pencatat dan pengelola keuangan.
 Tugasmu adalah menganalisis pesan pengguna dan merespons HANYA dengan JSON valid.
 
@@ -59,7 +59,6 @@ Output: {"intent":"manage_wallet","actions":[{"action":"delete_wallet","wallet":
 PENTING: Hanya kembalikan RAW JSON tanpa markdown, tanpa backtick, tanpa penjelasan.`
 
 type AIService interface {
-	ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error)
 	ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error)
 	Close()
 }
@@ -130,24 +129,6 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 	}
 
 	return &parsed, nil
-}
-
-func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error) {
-	intent, err := s.ParseIntentPrompt(userMessage)
-	if err != nil {
-		return nil, err
-	}
-	if len(intent.Actions) == 0 {
-		return nil, fmt.Errorf("no action found in prompt")
-	}
-	first := intent.Actions[0]
-	return &models.ParsedTransaction{
-		Amount:      first.Amount,
-		Type:        first.Type,
-		Category:    first.Category,
-		Wallet:      first.Wallet,
-		Description: first.Description,
-	}, nil
 }
 
 func (s *aiService) Close() {

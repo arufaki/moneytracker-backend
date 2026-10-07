@@ -39,11 +39,5 @@ type ParsedIntent struct {
 	Actions []ParsedAction `json:"actions"`
 }
 
-type ParsedTransaction struct {
-	Amount      float64         `json:"amount"`
-	Type        TransactionType `json:"type"`
-	Category    string          `json:"category"`
-	Wallet      string          `json:"wallet"`
-	Description string          `json:"description"`
-}
+
 
