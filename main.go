@@ -8,6 +8,7 @@ import (
 	"money-tracker-ai/config"
 	"money-tracker-ai/controllers"
 	_ "money-tracker-ai/docs"
+	"money-tracker-ai/middleware"
 	"money-tracker-ai/repositories"
 	"money-tracker-ai/routes"
 	"money-tracker-ai/services"
@@ -66,6 +67,7 @@ func main() {
 
 	// Setup Gin router
 	r := gin.Default()
+	r.Use(middleware.MaxBodySize(1024 * 1024)) // Global 1MB body limit
 
 	// Swagger UI route
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

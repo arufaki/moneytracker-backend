@@ -1,7 +1,10 @@
 package routes
 
 import (
+	"time"
+
 	"money-tracker-ai/controllers"
+	"money-tracker-ai/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,10 +38,13 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 			categories.POST("", cfg.CategoryController.CreateCategory)
 		}
 
-		// Chat route (AI-powered transaction)
-		api.POST("/chat", cfg.ChatController.Chat)
+		// Chat route (AI-powered transaction with rate limit & 4KB body limit)
+		chatLimiter := middleware.RateLimiter(10, time.Minute)
+		chatBodyLimit := middleware.MaxBodySize(4096)
+		api.POST("/chat", chatLimiter, chatBodyLimit, cfg.ChatController.Chat)
 
 		// Analytics route
 		api.GET("/summary", cfg.AnalyticsController.GetSummary)
 	}
 }
+

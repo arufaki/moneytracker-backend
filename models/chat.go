@@ -1,7 +1,7 @@
 package models
 
 type ChatRequest struct {
-	Message string `json:"message" binding:"required"`
+	Message string `json:"message" binding:"required,max=500"`
 }
 
 type ChatResponse struct {
