@@ -18,21 +18,10 @@ func NewChatController(service services.TransactionService) *ChatController {
 	return &ChatController{service: service}
 }
 
-// Chat godoc
-// @Summary     AI Chat untuk input transaksi
-// @Description Mengirim pesan natural language untuk merekam transaksi via AI
-// @Tags        AI Chat
-// @Accept      json
-// @Produce     json
-// @Param       body  body      models.ChatRequest  true  "Chat payload"
-// @Success     200   {object}  models.ChatResponse
-// @Failure     400   {object}  map[string]interface{}
-// @Failure     500   {object}  map[string]interface{}
-// @Router      /chat [post]
 func (ctrl *ChatController) Chat(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
 	var req models.ChatRequest
 
-	// Bind JSON body ke struct ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		if strings.Contains(err.Error(), "too large") {
 			log.Printf("[SECURITY] Request body too large on /api/chat from IP: %s", c.ClientIP())
@@ -50,8 +39,7 @@ func (ctrl *ChatController) Chat(c *gin.Context) {
 		return
 	}
 
-	// Proses pesan via TransactionService
-	resp, err := ctrl.service.ProcessChatMessage(req.Message)
+	resp, err := ctrl.service.ProcessChatMessage(userID, req.Message)
 	if err != nil {
 		if err.Error() == "insufficient balance" {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -70,4 +58,3 @@ func (ctrl *ChatController) Chat(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
-

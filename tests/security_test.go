@@ -9,6 +9,7 @@ import (
 	"money-tracker-ai/models"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestSecurityHardening(t *testing.T) {
@@ -33,7 +34,7 @@ func TestSecurityHardening(t *testing.T) {
 		reqBody := map[string]interface{}{"message": "test rate limit"}
 		testIP := "10.0.0.4"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseIntentPrompt", "test rate limit").Return(&models.ParsedIntent{
+		mockAIService.On("ParseIntentPrompt", "test rate limit", mock.Anything).Return(&models.ParsedIntent{
 			Intent: models.IntentUnknown,
 		}, nil).Maybe()
 		var lastCode int

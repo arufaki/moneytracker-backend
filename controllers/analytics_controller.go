@@ -19,18 +19,8 @@ func NewAnalyticsController(analyticsService services.AnalyticsService) *Analyti
 	return &AnalyticsController{analyticsService: analyticsService}
 }
 
-// GetSummary godoc
-// @Summary     Get financial summary
-// @Description Mengambil ringkasan keuangan (pemasukan, pengeluaran, saldo)
-// @Tags        Analytics
-// @Produce     json
-// @Param       month  query     int  false  "Bulan (1-12)"
-// @Param       year   query     int  false  "Tahun (contoh: 2026)"
-// @Success     200    {object}  models.MonthlySummary
-// @Failure     400    {object}  map[string]interface{}
-// @Failure     500    {object}  map[string]interface{}
-// @Router      /summary [get]
 func (c *AnalyticsController) GetSummary(ctx *gin.Context) {
+	userID := ctx.MustGet("userID").(uint)
 	now := time.Now()
 	monthStr := ctx.Query("month")
 	yearStr := ctx.Query("year")
@@ -57,7 +47,7 @@ func (c *AnalyticsController) GetSummary(ctx *gin.Context) {
 		}
 	}
 
-	summary, err := c.analyticsService.GetMonthlySummary(month, year)
+	summary, err := c.analyticsService.GetMonthlySummary(userID, month, year)
 	if err != nil {
 		log.Printf("[ERROR] GetSummary: %v", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
