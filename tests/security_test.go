@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"money-tracker-ai/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,6 +32,10 @@ func TestSecurityHardening(t *testing.T) {
 	t.Run("Rate limiting: request berulang melampaui limit mengembalikan 429", func(t *testing.T) {
 		reqBody := map[string]interface{}{"message": "test rate limit"}
 		testIP := "10.0.0.4"
+		mockAIService.ExpectedCalls = nil
+		mockAIService.On("ParseIntentPrompt", "test rate limit").Return(&models.ParsedIntent{
+			Intent: models.IntentUnknown,
+		}, nil).Maybe()
 		var lastCode int
 		for i := 0; i < 12; i++ {
 			w := DoRequest("POST", "/api/chat", reqBody, testIP)
