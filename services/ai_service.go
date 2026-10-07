@@ -103,7 +103,7 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 		},
 	}
 
-	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.5-flash-lite", genai.Text(userMessage), config)
+	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.8-flash", genai.Text(userMessage), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content from Gemini: %w", err)
 	}
