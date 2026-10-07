@@ -39,9 +39,7 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 		}
 
 		// Chat route (AI-powered transaction with rate limit & 4KB body limit)
-		chatLimiter := middleware.RateLimiter(10, time.Minute)
-		chatBodyLimit := middleware.MaxBodySize(4096)
-		api.POST("/chat", chatLimiter, chatBodyLimit, cfg.ChatController.Chat)
+		api.POST("/chat", middleware.RateLimiter(10, time.Minute), middleware.MaxBodySize(4096), cfg.ChatController.Chat)
 
 		// Analytics route
 		api.GET("/summary", cfg.AnalyticsController.GetSummary)

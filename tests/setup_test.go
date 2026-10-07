@@ -83,7 +83,7 @@ func CleanDatabase() {
 	}
 }
 
-func DoRequest(method, url string, body interface{}) *httptest.ResponseRecorder {
+func DoRequest(method, url string, body interface{}, ip ...string) *httptest.ResponseRecorder {
 	var reqBody []byte
 	if body != nil {
 		switch v := body.(type) {
@@ -95,6 +95,10 @@ func DoRequest(method, url string, body interface{}) *httptest.ResponseRecorder 
 	}
 	req, _ := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
+	if len(ip) > 0 && ip[0] != "" {
+		req.Header.Set("X-Forwarded-For", ip[0])
+		req.RemoteAddr = ip[0] + ":12345"
+	}
 
 	w := httptest.NewRecorder()
 	testRouter.ServeHTTP(w, req)

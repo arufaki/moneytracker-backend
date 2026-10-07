@@ -19,11 +19,6 @@ func MaxBodySize(limit int64) gin.HandlerFunc {
 	}
 }
 
-type ipLimiter struct {
-	mu      sync.Mutex
-	clients map[string]*clientLimiter
-}
-
 type clientLimiter struct {
 	count     int
 	lastReset time.Time
@@ -31,25 +26,24 @@ type clientLimiter struct {
 
 // RateLimiter limits requests per IP for a given window duration.
 func RateLimiter(limit int, window time.Duration) gin.HandlerFunc {
-	l := &ipLimiter{
-		clients: make(map[string]*clientLimiter),
-	}
+	var mu sync.Mutex
+	clients := make(map[string]*clientLimiter)
 
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		now := time.Now()
 
-		l.mu.Lock()
-		cli, exists := l.clients[ip]
+		mu.Lock()
+		cli, exists := clients[ip]
 		if !exists || now.Sub(cli.lastReset) > window {
-			l.clients[ip] = &clientLimiter{count: 1, lastReset: now}
-			l.mu.Unlock()
+			clients[ip] = &clientLimiter{count: 1, lastReset: now}
+			mu.Unlock()
 			c.Next()
 			return
 		}
 
 		if cli.count >= limit {
-			l.mu.Unlock()
+			mu.Unlock()
 			log.Printf("[SECURITY] Rate limit exceeded for IP: %s on path: %s", ip, c.Request.URL.Path)
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"success": false,
@@ -60,7 +54,7 @@ func RateLimiter(limit int, window time.Duration) gin.HandlerFunc {
 		}
 
 		cli.count++
-		l.mu.Unlock()
+		mu.Unlock()
 		c.Next()
 	}
 }
