@@ -5,9 +5,11 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Success       bool              `json:"success"`
-	Message       string            `json:"message"`
-	Transaction   *Transaction      `json:"transaction,omitempty"`
-	UpdatedWallet *Wallet           `json:"updated_wallet,omitempty"`
-	ParsedData    *ParsedTransaction `json:"parsed_data,omitempty"`
+	Success       bool           `json:"success"`
+	Message       string         `json:"message"`
+	Transaction   *Transaction   `json:"transaction,omitempty"`
+	Transactions  []*Transaction `json:"transactions,omitempty"`
+	UpdatedWallet *Wallet        `json:"updated_wallet,omitempty"`
+	ParsedIntent  *ParsedIntent  `json:"parsed_intent,omitempty"`
 }
+

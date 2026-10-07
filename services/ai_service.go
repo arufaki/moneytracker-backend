@@ -15,26 +15,51 @@ import (
 )
 
 // System Prompt: Instruksi ke AI untuk selalu merespons dalam format JSON
-// yang sesuai dengan struct ParsedTransaction. Jangan ubah prompt ini sembarangan!
-const systemPrompt = `Kamu adalah asisten pencatat keuangan. 
-Tugasmu adalah mengekstrak informasi transaksi keuangan dari pesan pengguna dan merespons HANYA dengan JSON valid.
+// yang sesuai dengan struct ParsedIntent. Jangan ubah prompt ini sembarangan!
+const systemPrompt = `Kamu adalah asisten pencatat dan pengelola keuangan.
+Tugasmu adalah menganalisis pesan pengguna dan merespons HANYA dengan JSON valid.
 
-Format JSON yang harus kamu kembalikan (TANPA markdown, TANPA tanda backtick, HANYA raw JSON):
+Tentukan "intent" utama dari pesan:
+1. "record_transaction": jika pengguna mencatat satu atau beberapa transaksi pengeluaran/pemasukan.
+2. "manage_wallet": jika pengguna meminta membuat wallet baru, mengubah/set saldo wallet, atau menghapus wallet.
+3. "unknown": jika pesan tidak relevan.
+
+Setiap item dalam array "actions" memiliki field "action":
+- Untuk intent "record_transaction": "action" adalah "add_transaction".
+- Untuk intent "manage_wallet": "action" bisa "set_balance", "create_wallet", atau "delete_wallet".
+
+Format JSON wajib:
 {
-  "amount": <angka dalam satuan rupiah, tanpa titik/koma>,
-  "type": "<'income' atau 'expense'>",
-  "category": "<pilih dari: Makanan, Transportasi, Gaji, Hiburan, Belanja, Tagihan, atau tebak yang paling sesuai>",
-  "wallet": "<nama dompet yang disebutkan user, jika tidak ada tulis 'Cash'>",
-  "description": "<deskripsi singkat dalam bahasa Indonesia>"
+  "intent": "<'record_transaction' | 'manage_wallet' | 'unknown'>",
+  "actions": [
+    {
+      "action": "<'add_transaction' | 'set_balance' | 'create_wallet' | 'delete_wallet'>",
+      "amount": <angka nominal transaksi jika add_transaction>,
+      "balance": <angka nominal saldo jika set_balance atau create_wallet>,
+      "type": "<'income' atau 'expense' jika add_transaction>",
+      "category": "<kategori seperti Makanan, Transportasi, Gaji, Belanja, Tagihan, dll jika add_transaction>",
+      "wallet": "<nama wallet yang disebutkan, default 'Cash' jika tidak disebutkan>",
+      "description": "<deskripsi singkat jika add_transaction>"
+    }
+  ]
 }
 
-Contoh input: "Habis beli dimsum mentai 35k pake GoPay"
-Contoh output: {"amount":35000,"type":"expense","category":"Makanan","wallet":"GoPay","description":"dimsum mentai"}
+Contoh 1 (Multiple Transaksi):
+Input: "Beli susu 25k, bensin 50k, bayar wifi 300k pake cash"
+Output: {"intent":"record_transaction","actions":[{"action":"add_transaction","amount":25000,"type":"expense","category":"Belanja","wallet":"Cash","description":"beli susu"},{"action":"add_transaction","amount":50000,"type":"expense","category":"Transportasi","wallet":"Cash","description":"bensin"},{"action":"add_transaction","amount":300000,"type":"expense","category":"Tagihan","wallet":"Cash","description":"bayar wifi"}]}
 
-PENTING: Jangan tambahkan teks apapun selain JSON. Tidak ada penjelasan, tidak ada markdown.`
+Contoh 2 (Update/Set Saldo & Create Wallet):
+Input: "update saldo cash 0, saldo BRI 500k, saldo seabank 45k"
+Output: {"intent":"manage_wallet","actions":[{"action":"set_balance","wallet":"Cash","balance":0},{"action":"set_balance","wallet":"BRI","balance":500000},{"action":"set_balance","wallet":"SeaBank","balance":45000}]}
+
+Contoh 3 (Hapus Wallet):
+Input: "hapus wallet OldWallet"
+Output: {"intent":"manage_wallet","actions":[{"action":"delete_wallet","wallet":"OldWallet"}]}
+
+PENTING: Hanya kembalikan RAW JSON tanpa markdown, tanpa backtick, tanpa penjelasan.`
 
 type AIService interface {
-	ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error)
+	ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error)
 	Close()
 }
 
@@ -61,33 +86,26 @@ func NewAIService(logRepo repositories.AILogRepository) AIService {
 	}
 }
 
-// ParseTransactionPrompt mengirim pesan user ke Gemini AI dan meng-parse
-// respons JSON-nya menjadi struct ParsedTransaction.
-func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error) {
+func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Setup model config dengan system instruction
 	config := &genai.GenerateContentConfig{
 		SystemInstruction: &genai.Content{
 			Parts: []*genai.Part{{Text: systemPrompt}},
 		},
 	}
 
-	// Kirim pesan ke AI
 	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.5-flash-lite", genai.Text(userMessage), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content from Gemini: %w", err)
 	}
 
-	// Ekstrak teks dari respons
 	if resp == nil || len(resp.Candidates) == 0 {
 		return nil, fmt.Errorf("empty response from Gemini")
 	}
 
 	rawText := resp.Text()
-
-	// Bersihkan dari kemungkinan markdown yang lolos dari instruksi
 	cleanedText := strings.TrimSpace(rawText)
 	if idx := strings.Index(cleanedText, "```json"); idx != -1 {
 		cleanedText = cleanedText[idx+7:]
@@ -97,18 +115,15 @@ func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTr
 	}
 	cleanedText = strings.TrimSpace(cleanedText)
 
-	// Parse JSON ke struct
-	var parsed models.ParsedTransaction
+	var parsed models.ParsedIntent
 	if err := json.Unmarshal([]byte(cleanedText), &parsed); err != nil {
 		return nil, fmt.Errorf("failed to parse AI response as JSON: %w. Raw response: %s", err, cleanedText)
 	}
 
-	// Simpan ke ai_logs sebagai audit trail (async tidak perlu, cukup sync)
 	logEntry := &models.AILog{
 		RawMessage:    userMessage,
 		ExtractedJSON: cleanedText,
 	}
-	// Log error tapi jangan blokir response ke user
 	if logErr := s.logRepo.Create(logEntry); logErr != nil {
 		log.Printf("warning: failed to save AI log: %v\n", logErr)
 	}
@@ -116,7 +131,6 @@ func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTr
 	return &parsed, nil
 }
 
-// Close membersihkan resource client
 func (s *aiService) Close() {
-	// genai.Client from google.golang.org/genai doesn't require Close()
 }
+

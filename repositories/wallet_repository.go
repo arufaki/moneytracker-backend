@@ -12,6 +12,7 @@ type WalletRepository interface {
 	Create(wallet *models.Wallet) error
 	UpdateBalance(id uint, newBalance float64) error
 	FindByName(name string) (*models.Wallet, error)
+	Delete(id uint) error
 }
 
 type walletRepository struct {
@@ -60,3 +61,15 @@ func (r *walletRepository) FindByName(name string) (*models.Wallet, error) {
 	}
 	return &wallet, nil
 }
+
+func (r *walletRepository) Delete(id uint) error {
+	result := r.db.Delete(&models.Wallet{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+

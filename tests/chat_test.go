@@ -20,12 +20,18 @@ func TestChat(t *testing.T) {
 
 		msg := "Beli bakso 30k pake GoPay"
 		mockAIService.ExpectedCalls = nil // reset mock
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:      30000,
-			Type:        "expense",
-			Category:    "Makanan",
-			Wallet:      "GoPay",
-			Description: "Beli bakso",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:      models.ActionAddTransaction,
+					Amount:      30000,
+					Type:        "expense",
+					Category:    "Makanan",
+					Wallet:      "GoPay",
+					Description: "Beli bakso",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
@@ -49,11 +55,17 @@ func TestChat(t *testing.T) {
 
 		msg := "Beli makanan 50k pake GoPay"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:   50000,
-			Type:     "expense",
-			Category: "Makanan",
-			Wallet:   "GoPay",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:   models.ActionAddTransaction,
+					Amount:   50000,
+					Type:     "expense",
+					Category: "Makanan",
+					Wallet:   "GoPay",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
@@ -74,11 +86,17 @@ func TestChat(t *testing.T) {
 
 		msg := "Gaji masuk 200k ke BCA"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:   200000,
-			Type:     "income",
-			Category: "Gaji",
-			Wallet:   "BCA",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:   models.ActionAddTransaction,
+					Amount:   200000,
+					Type:     "income",
+					Category: "Gaji",
+					Wallet:   "BCA",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
@@ -100,20 +118,26 @@ func TestChat(t *testing.T) {
 
 		msg := "Dapat hadiah 50k ke ShopeePay"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:   50000,
-			Type:     "income",
-			Category: "Hadiah",
-			Wallet:   "ShopeePay",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:   models.ActionAddTransaction,
+					Amount:   50000,
+					Type:     "income",
+					Category: "Hadiah",
+					Wallet:   "ShopeePay",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
-		w := DoRequest("POST", "/api/chat", reqBody)
+		w := DoRequest("POST", "/api/chat", reqBody, "10.0.1.1")
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var wallet models.Wallet
-		config.DB.Where("name = ?", "ShopeePay").First(&wallet)
+		config.DB.Where("LOWER(name) = LOWER(?)", "ShopeePay").First(&wallet)
 		assert.Equal(t, float64(50000), wallet.Balance)
 	})
 
@@ -123,15 +147,21 @@ func TestChat(t *testing.T) {
 
 		msg := "Donasi 10k dari Cash"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:   10000,
-			Type:     "expense",
-			Category: "Donasi",
-			Wallet:   "Cash",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:   models.ActionAddTransaction,
+					Amount:   10000,
+					Type:     "expense",
+					Category: "Donasi",
+					Wallet:   "Cash",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
-		w := DoRequest("POST", "/api/chat", reqBody)
+		w := DoRequest("POST", "/api/chat", reqBody, "10.0.1.2")
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
@@ -144,7 +174,7 @@ func TestChat(t *testing.T) {
 		CleanDatabase()
 		wallet := models.Wallet{Name: "Cash", Balance: 100000}
 		config.DB.Create(&wallet)
-		
+
 		limit := float64(100000)
 		cat := models.Category{Name: "Hiburan", Type: "expense", BudgetLimit: limit}
 		config.DB.Create(&cat)
@@ -154,30 +184,36 @@ func TestChat(t *testing.T) {
 
 		msg := "Nonton 30k dari Cash"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return(&models.ParsedTransaction{
-			Amount:   30000,
-			Type:     "expense",
-			Category: "Hiburan",
-			Wallet:   "Cash",
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{
+					Action:   models.ActionAddTransaction,
+					Amount:   30000,
+					Type:     "expense",
+					Category: "Hiburan",
+					Wallet:   "Cash",
+				},
+			},
 		}, nil).Once()
 
 		reqBody := map[string]interface{}{"message": msg}
-		w := DoRequest("POST", "/api/chat", reqBody)
+		w := DoRequest("POST", "/api/chat", reqBody, "10.0.1.3")
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		
+
 		msgResponse, ok := response["message"].(string)
 		assert.True(t, ok)
 		assert.Contains(t, msgResponse, "⚠️ PERINGATAN")
 	})
 
 	t.Run("Skenario 8.7: Request body kosong atau tidak memuat field message", func(t *testing.T) {
-		w := DoRequest("POST", "/api/chat", map[string]interface{}{})
+		w := DoRequest("POST", "/api/chat", map[string]interface{}{}, "10.0.1.4")
 		assert.Equal(t, http.StatusBadRequest, w.Code)
-		
+
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -186,17 +222,89 @@ func TestChat(t *testing.T) {
 
 	t.Run("Skenario 8.8: Error saat proses parsing AI", func(t *testing.T) {
 		CleanDatabase()
-		
+
 		msg := "test error"
 		mockAIService.ExpectedCalls = nil
-		mockAIService.On("ParseTransactionPrompt", msg).Return((*models.ParsedTransaction)(nil), errors.New("timeout")).Once()
+		mockAIService.On("ParseIntentPrompt", msg).Return((*models.ParsedIntent)(nil), errors.New("timeout")).Once()
 
-		w := DoRequest("POST", "/api/chat", map[string]interface{}{"message": msg})
-		
+		w := DoRequest("POST", "/api/chat", map[string]interface{}{"message": msg}, "10.0.1.5")
+
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.False(t, response["success"].(bool))
 	})
+
+	t.Run("Skenario 8.9: Multiple transaction input dalam satu pesan", func(t *testing.T) {
+		CleanDatabase()
+		config.DB.Create(&models.Wallet{Name: "Cash", Balance: 500000})
+		config.DB.Create(&models.Category{Name: "Belanja", Type: "expense"})
+		config.DB.Create(&models.Category{Name: "Transportasi", Type: "expense"})
+
+		msg := "Beli susu 25k, bensin 50k pake Cash"
+		mockAIService.ExpectedCalls = nil
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentRecordTransaction,
+			Actions: []models.ParsedAction{
+				{Action: models.ActionAddTransaction, Amount: 25000, Type: "expense", Category: "Belanja", Wallet: "Cash", Description: "susu"},
+				{Action: models.ActionAddTransaction, Amount: 50000, Type: "expense", Category: "Transportasi", Wallet: "Cash", Description: "bensin"},
+			},
+		}, nil).Once()
+
+		w := DoRequest("POST", "/api/chat", map[string]interface{}{"message": msg}, "10.0.1.6")
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var wallet models.Wallet
+		config.DB.Where("name = ?", "Cash").First(&wallet)
+		assert.Equal(t, float64(425000), wallet.Balance)
+	})
+
+	t.Run("Skenario 8.10: Update saldo & create wallet via chat", func(t *testing.T) {
+		CleanDatabase()
+		config.DB.Create(&models.Wallet{Name: "Cash", Balance: 100000})
+
+		msg := "update saldo cash 0, saldo BRI 500k"
+		mockAIService.ExpectedCalls = nil
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentManageWallet,
+			Actions: []models.ParsedAction{
+				{Action: models.ActionSetBalance, Wallet: "cash", Balance: 0},
+				{Action: models.ActionCreateWallet, Wallet: "BRI", Balance: 500000},
+			},
+		}, nil).Once()
+
+		w := DoRequest("POST", "/api/chat", map[string]interface{}{"message": msg}, "10.0.1.7")
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var cash models.Wallet
+		config.DB.Where("name = ?", "Cash").First(&cash)
+		assert.Equal(t, float64(0), cash.Balance)
+
+		var bri models.Wallet
+		config.DB.Where("name = ?", "Bri").First(&bri)
+		assert.Equal(t, float64(500000), bri.Balance)
+	})
+
+	t.Run("Skenario 8.11: Hapus wallet via chat", func(t *testing.T) {
+		CleanDatabase()
+		config.DB.Create(&models.Wallet{Name: "OldWallet", Balance: 100000})
+
+		msg := "hapus wallet OldWallet"
+		mockAIService.ExpectedCalls = nil
+		mockAIService.On("ParseIntentPrompt", msg).Return(&models.ParsedIntent{
+			Intent: models.IntentManageWallet,
+			Actions: []models.ParsedAction{
+				{Action: models.ActionDeleteWallet, Wallet: "OldWallet"},
+			},
+		}, nil).Once()
+
+		w := DoRequest("POST", "/api/chat", map[string]interface{}{"message": msg}, "10.0.1.8")
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var count int64
+		config.DB.Model(&models.Wallet{}).Where("name = ?", "OldWallet").Count(&count)
+		assert.Equal(t, int64(0), count)
+	})
 }
+
