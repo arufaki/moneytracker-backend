@@ -44,6 +44,12 @@ func ConnectDatabase() {
 		log.Fatal("Failed to connect to database!", err)
 	}
 
+	sqlDB, err := database.DB()
+	if err == nil {
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetMaxIdleConns(5)
+	}
+
 	fmt.Println("Database connection successfully opened")
 	DB = database
 }

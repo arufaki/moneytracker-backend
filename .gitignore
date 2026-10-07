@@ -1,4 +1,6 @@
 .env
+.agents
+AGENTS.md
 tmp_app.exe
 *.exe
 issue.md

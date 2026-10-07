@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"log"
 	"money-tracker-ai/services"
 	"net/http"
 	"strconv"
@@ -29,7 +30,8 @@ func NewWalletController(service services.WalletService) *WalletController {
 func (ctrl *WalletController) GetAllWallets(c *gin.Context) {
 	wallets, err := ctrl.service.GetAllWallets()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] GetAllWallets: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": wallets})
@@ -58,6 +60,7 @@ func (ctrl *WalletController) GetWalletByID(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
 		} else {
+			log.Printf("[ERROR] GetWalletByID: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 		return
@@ -77,11 +80,12 @@ func (ctrl *WalletController) GetWalletByID(c *gin.Context) {
 // @Router      /wallets [post]
 func (ctrl *WalletController) CreateWallet(c *gin.Context) {
 	var body struct {
-		Name    string  `json:"name" binding:"required"`
-		Balance float64 `json:"balance"`
+		Name    string  `json:"name" binding:"required,max=100"`
+		Balance float64 `json:"balance" binding:"gte=0"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[SECURITY] Validation failure on POST /api/wallets from IP %s", c.ClientIP())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body or missing required fields"})
 		return
 	}
 
@@ -92,3 +96,4 @@ func (ctrl *WalletController) CreateWallet(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, gin.H{"data": wallet, "message": "Wallet created successfully"})
 }
+

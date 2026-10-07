@@ -64,7 +64,7 @@ func NewAIService(logRepo repositories.AILogRepository) AIService {
 // ParseTransactionPrompt mengirim pesan user ke Gemini AI dan meng-parse
 // respons JSON-nya menjadi struct ParsedTransaction.
 func (s *aiService) ParseTransactionPrompt(userMessage string) (*models.ParsedTransaction, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	// Setup model config dengan system instruction

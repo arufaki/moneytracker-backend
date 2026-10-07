@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"log"
 	"money-tracker-ai/services"
 	"net/http"
 	"strconv"
@@ -29,7 +30,8 @@ func NewCategoryController(service services.CategoryService) *CategoryController
 func (ctrl *CategoryController) GetAllCategories(c *gin.Context) {
 	categories, err := ctrl.service.GetAllCategories()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[ERROR] GetAllCategories: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": categories})
@@ -58,6 +60,7 @@ func (ctrl *CategoryController) GetCategoryByID(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
 		} else {
+			log.Printf("[ERROR] GetCategoryByID: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}
 		return
@@ -74,14 +77,15 @@ func (ctrl *CategoryController) GetCategoryByID(c *gin.Context) {
 // @Param       body  body      object{name=string,type=string}  true  "Category payload"
 // @Success     201   {object}  map[string]interface{}
 // @Failure     400   {object}  map[string]interface{}
-// @Router      /categories [post]
+// @Router      /categories/{id} [post]
 func (ctrl *CategoryController) CreateCategory(c *gin.Context) {
 	var body struct {
-		Name string `json:"name" binding:"required"`
-		Type string `json:"type" binding:"required"`
+		Name string `json:"name" binding:"required,max=100"`
+		Type string `json:"type" binding:"required,oneof=income expense"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[SECURITY] Validation failure on POST /api/categories from IP %s", c.ClientIP())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body or missing required fields"})
 		return
 	}
 
@@ -92,3 +96,4 @@ func (ctrl *CategoryController) CreateCategory(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, gin.H{"data": category, "message": "Category created successfully"})
 }
+

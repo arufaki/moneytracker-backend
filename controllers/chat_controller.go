@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"log"
 	"money-tracker-ai/models"
 	"money-tracker-ai/services"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,6 +34,15 @@ func (ctrl *ChatController) Chat(c *gin.Context) {
 
 	// Bind JSON body ke struct ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		if strings.Contains(err.Error(), "too large") {
+			log.Printf("[SECURITY] Request body too large on /api/chat from IP: %s", c.ClientIP())
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{
+				"success": false,
+				"error":   "request body too large",
+			})
+			return
+		}
+		log.Printf("[SECURITY] Validation failure on /api/chat from IP %s", c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Field 'message' wajib diisi",
@@ -49,12 +60,14 @@ func (ctrl *ChatController) Chat(c *gin.Context) {
 			})
 			return
 		}
+		log.Printf("[ERROR] ProcessChatMessage failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "internal server error",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, resp)
 }
+
