@@ -123,7 +123,7 @@ func CleanDatabase() {
 func GenerateTestToken(userID uint) string {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "supersecretkey"
+		secret = "defaultsecret"
 	}
 	claims := jwt.MapClaims{
 		"user_id": userID,

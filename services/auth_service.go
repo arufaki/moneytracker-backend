@@ -52,10 +52,6 @@ func NewAuthService(
 }
 
 func (s *authService) Register(email, name, password string) error {
-	if email == "" || name == "" || password == "" {
-		return errors.New("email, name, and password are required")
-	}
-
 	existing, err := s.userRepo.FindByEmail(email)
 	if err == nil && existing != nil {
 		return errors.New("email is already registered")

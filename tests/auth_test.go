@@ -1,13 +1,19 @@
 package tests
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"money-tracker-ai/config"
 	"money-tracker-ai/models"
+	"money-tracker-ai/repositories"
+	"money-tracker-ai/services"
+	"money-tracker-ai/tests/mocks"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -160,5 +166,112 @@ func TestAuth_Flow(t *testing.T) {
 		// User can delete their own category
 		wDelUser := DoRequestWithToken("DELETE", fmt.Sprintf("/api/categories/%d", userCat.ID), nil, token)
 		assert.Equal(t, http.StatusOK, wDelUser.Code)
+	})
+
+	t.Run("Verifikasi email dengan token expired", func(t *testing.T) {
+		CleanDatabase()
+		user := &models.User{Email: "exp@example.com", Name: "Exp User", IsVerified: false}
+		config.DB.Create(user)
+		ev := &models.EmailVerification{
+			UserID:    user.ID,
+			Token:     "expired-token",
+			ExpiresAt: time.Now().Add(-1 * time.Hour),
+		}
+		config.DB.Create(ev)
+
+		w := DoRequestWithToken("GET", "/auth/verify?token=expired-token", nil, "")
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.Equal(t, "verification token expired", resp["error"])
+	})
+
+	t.Run("Refresh token expired", func(t *testing.T) {
+		CleanDatabase()
+		user := &models.User{Email: "exp-refresh@example.com", Name: "Exp Refresh", IsVerified: true}
+		config.DB.Create(user)
+
+		sum := sha256.Sum256([]byte("expired-raw-token"))
+		hashedToken := hex.EncodeToString(sum[:])
+		rt := &models.RefreshToken{
+			UserID:    user.ID,
+			Token:     hashedToken,
+			ExpiresAt: time.Now().Add(-1 * time.Hour),
+		}
+		config.DB.Create(rt)
+
+		w := DoRequestWithToken("POST", "/auth/refresh", map[string]interface{}{
+			"refresh_token": "expired-raw-token",
+		}, "")
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+		var resp map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.Equal(t, "refresh token expired", resp["error"])
+	})
+
+	t.Run("Google OAuth callback (user baru, user linking, user sudah ada)", func(t *testing.T) {
+		CleanDatabase()
+
+		mockOAuth := new(mocks.MockOAuthService)
+		userRepo := repositories.NewUserRepository(config.DB)
+		emailVerifRepo := repositories.NewEmailVerificationRepository(config.DB)
+		refreshRepo := repositories.NewRefreshTokenRepository(config.DB)
+		emailSvc := services.NewEmailService()
+		authSvcWithMock := services.NewAuthService(userRepo, emailVerifRepo, refreshRepo, emailSvc, mockOAuth)
+
+		// 1. Google OAuth user baru
+		mockOAuth.On("ExchangeCode", "code-new").Return(&services.GoogleUserInfo{
+			ID:    "google-id-1",
+			Email: "gnew@example.com",
+			Name:  "Google New",
+		}, nil).Once()
+
+		acc1, ref1, err := authSvcWithMock.GoogleLogin("code-new")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, acc1)
+		assert.NotEmpty(t, ref1)
+
+		createdUser, err := userRepo.FindByEmail("gnew@example.com")
+		assert.NoError(t, err)
+		assert.True(t, createdUser.IsVerified)
+		assert.Equal(t, "google-id-1", *createdUser.GoogleID)
+
+		// 2. Google OAuth user lama linking (email sudah terdaftar via manual tapi belum linking)
+		manualUser := &models.User{
+			Email:      "glink@example.com",
+			Name:       "Manual Link",
+			IsVerified: true,
+		}
+		config.DB.Create(manualUser)
+
+		mockOAuth.On("ExchangeCode", "code-link").Return(&services.GoogleUserInfo{
+			ID:    "google-id-2",
+			Email: "glink@example.com",
+			Name:  "Manual Link",
+		}, nil).Once()
+
+		acc2, ref2, err := authSvcWithMock.GoogleLogin("code-link")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, acc2)
+		assert.NotEmpty(t, ref2)
+
+		linkedUser, err := userRepo.FindByEmail("glink@example.com")
+		assert.NoError(t, err)
+		assert.Equal(t, manualUser.ID, linkedUser.ID)
+		assert.Equal(t, "google-id-2", *linkedUser.GoogleID)
+
+		// 3. Google OAuth user sudah ada (login langsung by GoogleID)
+		mockOAuth.On("ExchangeCode", "code-existing").Return(&services.GoogleUserInfo{
+			ID:    "google-id-1",
+			Email: "gnew@example.com",
+			Name:  "Google New",
+		}, nil).Once()
+
+		acc3, ref3, err := authSvcWithMock.GoogleLogin("code-existing")
+		assert.NoError(t, err)
+		assert.NotEmpty(t, acc3)
+		assert.NotEmpty(t, ref3)
 	})
 }

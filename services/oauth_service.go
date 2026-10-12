@@ -50,9 +50,6 @@ func NewOAuthService() OAuthService {
 }
 
 func (s *oAuthService) GetAuthURL(state string) string {
-	if state == "" {
-		state = "state-token"
-	}
 	return s.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 

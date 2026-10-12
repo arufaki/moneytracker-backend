@@ -39,6 +39,12 @@ func (s *walletService) CreateWallet(userID uint, name string, initialBalance fl
 	if initialBalance < 0 {
 		return nil, errors.New("initial balance cannot be negative")
 	}
+
+	existing, _ := s.repo.FindByName(name, userID)
+	if existing != nil {
+		return nil, errors.New("wallet already exists")
+	}
+
 	wallet := &models.Wallet{
 		UserID:  userID,
 		Name:    name,

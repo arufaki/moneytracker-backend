@@ -122,7 +122,20 @@ func TestWallet_Create(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("Skenario 4.5: Format body JSON tidak valid (malformed JSON)", func(t *testing.T) {
+	t.Run("Skenario 4.5: Pembuatan wallet dengan nama duplikat pada user yang sama", func(t *testing.T) {
+		CleanDatabase()
+		config.DB.Create(&models.Wallet{UserID: DefaultTestUser.ID, Name: "BCA", Balance: 100000})
+
+		reqBody := map[string]interface{}{"name": "BCA", "balance": 50000}
+		w := DoRequest("POST", "/api/wallets", reqBody)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
+		assert.Equal(t, "wallet already exists", response["error"])
+	})
+
+	t.Run("Skenario 4.6: Format body JSON tidak valid (malformed JSON)", func(t *testing.T) {
 		CleanDatabase()
 		w := DoRequest("POST", "/api/wallets", "invalid json")
 		assert.Equal(t, http.StatusBadRequest, w.Code)
