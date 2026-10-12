@@ -11,6 +11,7 @@ import (
 
 type RouterConfig struct {
 	RootController      *controllers.RootController
+	AuthController      *controllers.AuthController
 	WalletController    *controllers.WalletController
 	CategoryController  *controllers.CategoryController
 	ChatController      *controllers.ChatController
@@ -20,7 +21,22 @@ type RouterConfig struct {
 func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 	r.GET("/", cfg.RootController.GetAPIDocumentation)
 
-	api := r.Group("/api")
+	// Public Auth routes
+	auth := r.Group("/auth")
+	{
+		auth.POST("/register", cfg.AuthController.Register)
+		auth.GET("/verify", cfg.AuthController.VerifyEmail)
+		auth.POST("/login", cfg.AuthController.Login)
+		auth.POST("/refresh", cfg.AuthController.Refresh)
+		auth.GET("/google", cfg.AuthController.GoogleRedirect)
+		auth.GET("/google/callback", cfg.AuthController.GoogleCallback)
+
+		// Protected Auth route
+		auth.POST("/logout", middleware.JWTAuth(), cfg.AuthController.Logout)
+	}
+
+	// Protected API routes
+	api := r.Group("/api", middleware.JWTAuth())
 	{
 		// Wallet routes
 		wallets := api.Group("/wallets")
@@ -36,6 +52,7 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 			categories.GET("", cfg.CategoryController.GetAllCategories)
 			categories.GET("/:id", cfg.CategoryController.GetCategoryByID)
 			categories.POST("", cfg.CategoryController.CreateCategory)
+			categories.DELETE("/:id", cfg.CategoryController.DeleteCategory)
 		}
 
 		// Chat route (AI-powered transaction with rate limit & 4KB body limit)
@@ -45,4 +62,3 @@ func SetupRoutes(r *gin.Engine, cfg RouterConfig) {
 		api.GET("/summary", cfg.AnalyticsController.GetSummary)
 	}
 }
-

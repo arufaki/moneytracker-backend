@@ -14,8 +14,6 @@ import (
 	"google.golang.org/genai"
 )
 
-// System Prompt: Instruksi ke AI untuk selalu merespons dalam format JSON
-// yang sesuai dengan struct ParsedIntent. Jangan ubah prompt ini sembarangan!
 const systemPrompt = `Kamu adalah asisten pencatat dan pengelola keuangan.
 Tugasmu adalah menganalisis pesan pengguna dan merespons HANYA dengan JSON valid.
 
@@ -31,6 +29,13 @@ Setiap item dalam array "actions" memiliki field "action":
 - Untuk intent "record_transaction": "action" adalah "add_transaction".
 - Untuk intent "manage_wallet": "action" bisa "set_balance", "create_wallet", atau "delete_wallet".
 
+PENTING UNTUK TRANSFER / TOP UP ANTAR WALLET:
+Jika pengguna melakukan transfer atau top up antar wallet miliknya sendiri (misal: "bri: transfer ke seabank saya 97k", "transfer dari bca ke gopay 50rb", "top up ovo 100k dari bri"):
+- Ini adalah intent "record_transaction" yang terdiri dari 2 aksi otomatis:
+  1. "expense" (pengeluaran) pada wallet sumber dengan nominal tersebut (kategori: "Transfer" atau "Top Up").
+  2. "income" (pemasukan) pada wallet tujuan dengan nominal yang sama (kategori: "Transfer" atau "Top Up").
+- Keduanya WAJIB dimasukkan ke dalam array "actions" agar saldo kedua wallet sinkron terupdate!
+
 Format JSON wajib:
 {
   "intent": "<'record_transaction' | 'manage_wallet' | 'unknown'>",
@@ -40,7 +45,7 @@ Format JSON wajib:
       "amount": <angka nominal transaksi jika add_transaction>,
       "balance": <angka nominal saldo jika set_balance atau create_wallet>,
       "type": "<'income' atau 'expense' jika add_transaction>",
-      "category": "<kategori seperti Makanan, Transportasi, Gaji, Belanja, Tagihan, dll jika add_transaction>",
+      "category": "<kategori seperti Makanan, Transportasi, Gaji, Belanja, Tagihan, Transfer, Top Up, dll jika add_transaction>",
       "wallet": "<nama wallet yang disebutkan, default 'Cash' jika tidak disebutkan>",
       "description": "<deskripsi singkat jika add_transaction>"
     }
@@ -51,22 +56,26 @@ Contoh 1 (Multiple Transaksi Pengeluaran):
 Input: "Beli susu 25k, bensin 50k, bayar wifi 300k pake cash"
 Output: {"intent":"record_transaction","actions":[{"action":"add_transaction","amount":25000,"type":"expense","category":"Belanja","wallet":"Cash","description":"beli susu"},{"action":"add_transaction","amount":50000,"type":"expense","category":"Transportasi","wallet":"Cash","description":"bensin"},{"action":"add_transaction","amount":300000,"type":"expense","category":"Tagihan","wallet":"Cash","description":"bayar wifi"}]}
 
-Contoh 2 (Update/Set Saldo & Create Wallet):
+Contoh 2 (Transfer / Top Up Antar Wallet):
+Input: "bri: transfer ke seabank saya 97k"
+Output: {"intent":"record_transaction","actions":[{"action":"add_transaction","amount":97000,"type":"expense","category":"Transfer","wallet":"BRI","description":"transfer ke seabank"},{"action":"add_transaction","amount":97000,"type":"income","category":"Transfer","wallet":"SeaBank","description":"transfer dari bri"}]}
+
+Contoh 3 (Update/Set Saldo & Create Wallet):
 Input: "update saldo cash 0, saldo BRI 500k, saldo seabank 45k"
 Output: {"intent":"manage_wallet","actions":[{"action":"set_balance","wallet":"Cash","balance":0},{"action":"set_balance","wallet":"BRI","balance":500000},{"action":"set_balance","wallet":"SeaBank","balance":45000}]}
 
-Contoh 3 (Update Saldo Single):
+Contoh 4 (Update Saldo Single):
 Input: "update saldo cash 0"
 Output: {"intent":"manage_wallet","actions":[{"action":"set_balance","wallet":"Cash","balance":0}]}
 
-Contoh 4 (Hapus Wallet):
+Contoh 5 (Hapus Wallet):
 Input: "hapus wallet OldWallet"
 Output: {"intent":"manage_wallet","actions":[{"action":"delete_wallet","wallet":"OldWallet"}]}
 
 PENTING: Hanya kembalikan RAW JSON tanpa markdown, tanpa backtick, tanpa penjelasan.`
 
 type AIService interface {
-	ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error)
+	ParseIntentPrompt(userMessage string, userID uint) (*models.ParsedIntent, error)
 	Close()
 }
 
@@ -93,7 +102,7 @@ func NewAIService(logRepo repositories.AILogRepository) AIService {
 	}
 }
 
-func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent, error) {
+func (s *aiService) ParseIntentPrompt(userMessage string, userID uint) (*models.ParsedIntent, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -103,7 +112,7 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 		},
 	}
 
-	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.8-flash", genai.Text(userMessage), config)
+	resp, err := s.client.Models.GenerateContent(ctx, "gemini-3.5-flash-lite", genai.Text(userMessage), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate content from Gemini: %w", err)
 	}
@@ -128,6 +137,7 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 	}
 
 	logEntry := &models.AILog{
+		UserID:        userID,
 		RawMessage:    userMessage,
 		ExtractedJSON: cleanedText,
 	}
@@ -140,4 +150,3 @@ func (s *aiService) ParseIntentPrompt(userMessage string) (*models.ParsedIntent,
 
 func (s *aiService) Close() {
 }
-

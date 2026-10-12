@@ -10,7 +10,7 @@ import (
 )
 
 type AnalyticsService interface {
-	GetMonthlySummary(month int, year int) (*models.MonthlySummary, error)
+	GetMonthlySummary(userID uint, month int, year int) (*models.MonthlySummary, error)
 }
 
 type analyticsService struct {
@@ -21,7 +21,7 @@ func NewAnalyticsService(db *gorm.DB) AnalyticsService {
 	return &analyticsService{db: db}
 }
 
-func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.MonthlySummary, error) {
+func (s *analyticsService) GetMonthlySummary(userID uint, month int, year int) (*models.MonthlySummary, error) {
 	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
 	nextMonthStart := startDate.AddDate(0, 1, 0)
 
@@ -29,21 +29,24 @@ func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.Month
 	var netBalance float64
 
 	// Total Income
-	if err := s.db.Model(&models.Transaction{}).
-		Where("type = ? AND created_at >= ? AND created_at < ?", "income", startDate, nextMonthStart).
-		Select("COALESCE(SUM(amount), 0)").Scan(&income).Error; err != nil {
+	if err := s.db.Table("transactions").
+		Joins("JOIN wallets ON wallets.id = transactions.wallet_id").
+		Where("transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND wallets.user_id = ?", "income", startDate, nextMonthStart, userID).
+		Select("COALESCE(SUM(transactions.amount), 0)").Scan(&income).Error; err != nil {
 		return nil, fmt.Errorf("failed to query income: %w", err)
 	}
 
 	// Total Expense
-	if err := s.db.Model(&models.Transaction{}).
-		Where("type = ? AND created_at >= ? AND created_at < ?", "expense", startDate, nextMonthStart).
-		Select("COALESCE(SUM(amount), 0)").Scan(&expense).Error; err != nil {
+	if err := s.db.Table("transactions").
+		Joins("JOIN wallets ON wallets.id = transactions.wallet_id").
+		Where("transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND wallets.user_id = ?", "expense", startDate, nextMonthStart, userID).
+		Select("COALESCE(SUM(transactions.amount), 0)").Scan(&expense).Error; err != nil {
 		return nil, fmt.Errorf("failed to query expense: %w", err)
 	}
 
-	// Net Balance (from all wallets)
+	// Net Balance (from user's wallets)
 	if err := s.db.Model(&models.Wallet{}).
+		Where("user_id = ?", userID).
 		Select("COALESCE(SUM(balance), 0)").Scan(&netBalance).Error; err != nil {
 		return nil, fmt.Errorf("failed to query net balance: %w", err)
 	}
@@ -58,8 +61,9 @@ func (s *analyticsService) GetMonthlySummary(month int, year int) (*models.Month
 
 	if err := s.db.Table("transactions").
 		Select("categories.name as category_name, COALESCE(SUM(transactions.amount), 0) as total, categories.budget_limit as budget_limit").
-		Joins("left join categories on categories.id = transactions.category_id").
-		Where("transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ?", "expense", startDate, nextMonthStart).
+		Joins("JOIN wallets ON wallets.id = transactions.wallet_id").
+		Joins("LEFT JOIN categories ON categories.id = transactions.category_id").
+		Where("transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND wallets.user_id = ?", "expense", startDate, nextMonthStart, userID).
 		Group("categories.id, categories.name, categories.budget_limit").
 		Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("failed to query category breakdown: %w", err)

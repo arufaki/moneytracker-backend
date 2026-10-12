@@ -15,7 +15,7 @@ import (
 )
 
 type TransactionService interface {
-	ProcessChatMessage(userMessage string) (*models.ChatResponse, error)
+	ProcessChatMessage(userID uint, userMessage string) (*models.ChatResponse, error)
 }
 
 type transactionService struct {
@@ -40,7 +40,7 @@ func NewTransactionService(
 	}
 }
 
-func (s *transactionService) getOrCreateWallet(rawName string, initialBalance float64) (*models.Wallet, error) {
+func (s *transactionService) getOrCreateWallet(userID uint, rawName string, initialBalance float64) (*models.Wallet, error) {
 	name := strings.TrimSpace(rawName)
 	if name == "" {
 		name = "Cash"
@@ -48,10 +48,10 @@ func (s *transactionService) getOrCreateWallet(rawName string, initialBalance fl
 		name = strings.Title(strings.ToLower(name))
 	}
 
-	wallet, err := s.walletRepo.FindByName(name)
+	wallet, err := s.walletRepo.FindByName(name, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			wallet = &models.Wallet{Name: name, Balance: initialBalance}
+			wallet = &models.Wallet{UserID: userID, Name: name, Balance: initialBalance}
 			if createErr := s.walletRepo.Create(wallet); createErr != nil {
 				return nil, fmt.Errorf("failed to create wallet %s: %w", name, createErr)
 			}
@@ -62,8 +62,8 @@ func (s *transactionService) getOrCreateWallet(rawName string, initialBalance fl
 	return wallet, nil
 }
 
-func (s *transactionService) ProcessChatMessage(userMessage string) (*models.ChatResponse, error) {
-	intent, err := s.aiSvc.ParseIntentPrompt(userMessage)
+func (s *transactionService) ProcessChatMessage(userID uint, userMessage string) (*models.ChatResponse, error) {
+	intent, err := s.aiSvc.ParseIntentPrompt(userMessage, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse intent: %w", err)
 	}
@@ -79,12 +79,12 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 		for _, act := range intent.Actions {
 			switch act.Action {
 			case models.ActionCreateWallet, models.ActionSetBalance:
-				wallet, err := s.getOrCreateWallet(act.Wallet, act.Balance)
+				wallet, err := s.getOrCreateWallet(userID, act.Wallet, act.Balance)
 				if err != nil {
 					return nil, err
 				}
 				if wallet.Balance != act.Balance {
-					if err := s.walletRepo.UpdateBalance(wallet.ID, act.Balance); err != nil {
+					if err := s.walletRepo.UpdateBalance(wallet.ID, userID, act.Balance); err != nil {
 						return nil, fmt.Errorf("failed to set balance for %s: %w", wallet.Name, err)
 					}
 					wallet.Balance = act.Balance
@@ -96,7 +96,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 
 			case models.ActionDeleteWallet:
 				name := strings.Title(strings.ToLower(strings.TrimSpace(act.Wallet)))
-				wallet, err := s.walletRepo.FindByName(name)
+				wallet, err := s.walletRepo.FindByName(name, userID)
 				if err != nil {
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						msgs = append(msgs, fmt.Sprintf("Wallet %s tidak ditemukan.", name))
@@ -104,7 +104,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 						return nil, fmt.Errorf("failed to find wallet %s: %w", name, err)
 					}
 				} else {
-					if err := s.walletRepo.Delete(wallet.ID); err != nil {
+					if err := s.walletRepo.Delete(wallet.ID, userID); err != nil {
 						return nil, fmt.Errorf("failed to delete wallet %s: %w", name, err)
 					}
 					msgs = append(msgs, fmt.Sprintf("Wallet %s berhasil dihapus.", wallet.Name))
@@ -125,7 +125,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 		var msgs []string
 
 		for _, act := range intent.Actions {
-			wallet, err := s.getOrCreateWallet(act.Wallet, 0)
+			wallet, err := s.getOrCreateWallet(userID, act.Wallet, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -134,12 +134,14 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 			if catName == "" {
 				catName = "Lainnya"
 			}
-			category, err := s.categoryRepo.FindByName(catName)
+			category, err := s.categoryRepo.FindByName(catName, userID)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
+					uid := userID
 					category = &models.Category{
-						Name: catName,
-						Type: string(act.Type),
+						UserID: &uid,
+						Name:   catName,
+						Type:   string(act.Type),
 					}
 					if createErr := s.categoryRepo.Create(category); createErr != nil {
 						return nil, fmt.Errorf("failed to create category: %w", createErr)
@@ -164,7 +166,7 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 					return fmt.Errorf("invalid transaction type: %s", act.Type)
 				}
 
-				if err := tx.Model(&models.Wallet{}).Where("id = ?", wallet.ID).Update("balance", newBalance).Error; err != nil {
+				if err := tx.Model(&models.Wallet{}).Where("id = ? AND user_id = ?", wallet.ID, userID).Update("balance", newBalance).Error; err != nil {
 					return fmt.Errorf("failed to update wallet balance: %w", err)
 				}
 				wallet.Balance = newBalance
@@ -201,9 +203,10 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 				nextMonthStart := startDate.AddDate(0, 1, 0)
 
 				var totalExpense float64
-				if err := s.db.Model(&models.Transaction{}).
-					Where("category_id = ? AND type = ? AND created_at >= ? AND created_at < ?", category.ID, "expense", startDate, nextMonthStart).
-					Select("COALESCE(SUM(amount), 0)").Scan(&totalExpense).Error; err != nil {
+				if err := s.db.Table("transactions").
+					Joins("JOIN wallets ON wallets.id = transactions.wallet_id").
+					Where("transactions.category_id = ? AND transactions.type = ? AND transactions.created_at >= ? AND transactions.created_at < ? AND wallets.user_id = ?", category.ID, "expense", startDate, nextMonthStart, userID).
+					Select("COALESCE(SUM(transactions.amount), 0)").Scan(&totalExpense).Error; err != nil {
 					log.Printf("[WARN] failed to check budget total expense: %v", err)
 				} else if category.BudgetLimit > 0 && totalExpense > category.BudgetLimit {
 					warningMsg := fmt.Sprintf("\n⚠️ PERINGATAN: Pengeluaran kategori %s bulan ini sudah mencapai Rp %.0f (Batas Budget: Rp %.0f).",
@@ -240,4 +243,3 @@ func (s *transactionService) ProcessChatMessage(userMessage string) (*models.Cha
 		}, nil
 	}
 }
-

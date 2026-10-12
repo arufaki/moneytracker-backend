@@ -7,10 +7,11 @@ import (
 )
 
 type CategoryRepository interface {
-	FindAll() ([]models.Category, error)
-	FindByID(id uint) (*models.Category, error)
+	FindAll(userID uint) ([]models.Category, error)
+	FindByID(id uint, userID uint) (*models.Category, error)
 	Create(category *models.Category) error
-	FindByName(name string) (*models.Category, error)
+	FindByName(name string, userID uint) (*models.Category, error)
+	Delete(id uint, userID uint) error
 }
 
 type categoryRepository struct {
@@ -21,15 +22,15 @@ func NewCategoryRepository(db *gorm.DB) CategoryRepository {
 	return &categoryRepository{db: db}
 }
 
-func (r *categoryRepository) FindAll() ([]models.Category, error) {
+func (r *categoryRepository) FindAll(userID uint) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.Find(&categories).Error
+	err := r.db.Where("user_id IS NULL OR user_id = ?", userID).Find(&categories).Error
 	return categories, err
 }
 
-func (r *categoryRepository) FindByID(id uint) (*models.Category, error) {
+func (r *categoryRepository) FindByID(id uint, userID uint) (*models.Category, error) {
 	var category models.Category
-	err := r.db.First(&category, id).Error
+	err := r.db.Where("id = ? AND (user_id IS NULL OR user_id = ?)", id, userID).First(&category).Error
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +41,22 @@ func (r *categoryRepository) Create(category *models.Category) error {
 	return r.db.Create(category).Error
 }
 
-func (r *categoryRepository) FindByName(name string) (*models.Category, error) {
+func (r *categoryRepository) FindByName(name string, userID uint) (*models.Category, error) {
 	var category models.Category
-	err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&category).Error
+	err := r.db.Where("(user_id IS NULL OR user_id = ?) AND LOWER(name) = LOWER(?)", userID, name).First(&category).Error
 	if err != nil {
 		return nil, err
 	}
 	return &category, nil
+}
+
+func (r *categoryRepository) Delete(id uint, userID uint) error {
+	result := r.db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Category{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

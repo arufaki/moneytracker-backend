@@ -42,10 +42,16 @@ func main() {
 
 	// --- Dependency Injection (manual wiring) ---
 	// Repositories
+	userRepo := repositories.NewUserRepository(config.DB)
+	emailVerifRepo := repositories.NewEmailVerificationRepository(config.DB)
+	refreshRepo := repositories.NewRefreshTokenRepository(config.DB)
 	walletRepo := repositories.NewWalletRepository(config.DB)
 	categoryRepo := repositories.NewCategoryRepository(config.DB)
 
 	// Services
+	emailSvc := services.NewEmailService()
+	oauthSvc := services.NewOAuthService()
+	authSvc := services.NewAuthService(userRepo, emailVerifRepo, refreshRepo, emailSvc, oauthSvc)
 	walletSvc := services.NewWalletService(walletRepo)
 	categorySvc := services.NewCategoryService(categoryRepo)
 
@@ -60,6 +66,7 @@ func main() {
 
 	// Controllers
 	rootCtrl := controllers.NewRootController()
+	authCtrl := controllers.NewAuthController(authSvc, oauthSvc)
 	walletCtrl := controllers.NewWalletController(walletSvc)
 	categoryCtrl := controllers.NewCategoryController(categorySvc)
 	chatCtrl := controllers.NewChatController(transactionSvc)
@@ -89,6 +96,7 @@ func main() {
 	// Register all API routes
 	routes.SetupRoutes(r, routes.RouterConfig{
 		RootController:      rootCtrl,
+		AuthController:      authCtrl,
 		WalletController:    walletCtrl,
 		CategoryController:  categoryCtrl,
 		ChatController:      chatCtrl,

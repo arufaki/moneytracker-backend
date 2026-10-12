@@ -7,12 +7,12 @@ import (
 )
 
 type WalletRepository interface {
-	FindAll() ([]models.Wallet, error)
-	FindByID(id uint) (*models.Wallet, error)
+	FindAll(userID uint) ([]models.Wallet, error)
+	FindByID(id uint, userID uint) (*models.Wallet, error)
 	Create(wallet *models.Wallet) error
-	UpdateBalance(id uint, newBalance float64) error
-	FindByName(name string) (*models.Wallet, error)
-	Delete(id uint) error
+	UpdateBalance(id uint, userID uint, newBalance float64) error
+	FindByName(name string, userID uint) (*models.Wallet, error)
+	Delete(id uint, userID uint) error
 }
 
 type walletRepository struct {
@@ -23,15 +23,15 @@ func NewWalletRepository(db *gorm.DB) WalletRepository {
 	return &walletRepository{db: db}
 }
 
-func (r *walletRepository) FindAll() ([]models.Wallet, error) {
+func (r *walletRepository) FindAll(userID uint) ([]models.Wallet, error) {
 	var wallets []models.Wallet
-	err := r.db.Find(&wallets).Error
+	err := r.db.Where("user_id = ?", userID).Find(&wallets).Error
 	return wallets, err
 }
 
-func (r *walletRepository) FindByID(id uint) (*models.Wallet, error) {
+func (r *walletRepository) FindByID(id uint, userID uint) (*models.Wallet, error) {
 	var wallet models.Wallet
-	err := r.db.First(&wallet, id).Error
+	err := r.db.Where("id = ? AND user_id = ?", id, userID).First(&wallet).Error
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +42,8 @@ func (r *walletRepository) Create(wallet *models.Wallet) error {
 	return r.db.Create(wallet).Error
 }
 
-func (r *walletRepository) UpdateBalance(id uint, newBalance float64) error {
-	result := r.db.Model(&models.Wallet{}).Where("id = ?", id).Update("balance", newBalance)
+func (r *walletRepository) UpdateBalance(id uint, userID uint, newBalance float64) error {
+	result := r.db.Model(&models.Wallet{}).Where("id = ? AND user_id = ?", id, userID).Update("balance", newBalance)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -53,17 +53,17 @@ func (r *walletRepository) UpdateBalance(id uint, newBalance float64) error {
 	return nil
 }
 
-func (r *walletRepository) FindByName(name string) (*models.Wallet, error) {
+func (r *walletRepository) FindByName(name string, userID uint) (*models.Wallet, error) {
 	var wallet models.Wallet
-	err := r.db.Where("LOWER(name) = LOWER(?)", name).First(&wallet).Error
+	err := r.db.Where("user_id = ? AND LOWER(name) = LOWER(?)", userID, name).First(&wallet).Error
 	if err != nil {
 		return nil, err
 	}
 	return &wallet, nil
 }
 
-func (r *walletRepository) Delete(id uint) error {
-	result := r.db.Delete(&models.Wallet{}, id)
+func (r *walletRepository) Delete(id uint, userID uint) error {
+	result := r.db.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Wallet{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -72,4 +72,3 @@ func (r *walletRepository) Delete(id uint) error {
 	}
 	return nil
 }
-
